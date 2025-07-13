@@ -1,24 +1,11 @@
-const express = require('express');
-const {
-    getPendingVerifications,
-    approveVerification,
-    rejectVerification,
-    toggleBlockUser,
-    getAllUsers
-} = require('../controllers/adminController');
-
-const { protect } = require('../middlewares/auth');
-const { isAdmin } = require('../middlewares/admin');
+const express = require("express");
+const { adminLogin, getUsers, updateVerificationStatus } = require("../controllers/adminController");
+const { protect, admin } = require("../middlewares/auth");
 
 const router = express.Router();
 
-router.use(protect, isAdmin);
-
-router.get('/verifications', getPendingVerifications);
-router.patch('/verify/:userId/approve', approveVerification);
-router.patch('/verify/:userId/reject', rejectVerification);
-
-router.patch('/users/:userId/block', toggleBlockUser);
-router.get('/users', getAllUsers);
+router.post("/login", adminLogin);
+router.get("/users", protect, admin, getUsers);
+router.put("/users/:userId/verification", protect, admin, updateVerificationStatus);
 
 module.exports = router;
