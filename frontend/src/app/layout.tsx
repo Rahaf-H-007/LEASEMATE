@@ -5,6 +5,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import DirectionController from '@/components/DirectionController';
+import { NotificationsProvider } from "@/contexts/NotificationsContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,7 +38,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <DirectionController />
           <ThemeProvider>
             <AuthProvider>
-              {children}
+              <NotificationsProvider>
+                   {children}
+              </NotificationsProvider>
             </AuthProvider>
           </ThemeProvider>
         </LanguageProvider>
