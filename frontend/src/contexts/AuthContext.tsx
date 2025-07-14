@@ -12,15 +12,22 @@ interface User {
   avatarUrl?: string;
   verificationStatus?: {
     status: 'pending' | 'approved' | 'rejected';
-    idVerified: boolean;
-    faceMatched: boolean;
+    idVerified?: boolean;
+    faceMatched?: boolean;
+    uploadedIdUrl?: string;
+    selfieUrl?: string;
+    idData?: {
+      name?: string;
+      idNumber?: string;
+      birthDate?: string;
+    };
   };
 }
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (token: string) => void;
+  login: (token: string, user: User) => void;
   logout: () => void;
   isLoading: boolean;
 }
@@ -62,6 +69,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   }, []);
 
+  // Polling: fetch user data every 10 seconds to update verification status automatically
+  useEffect(() => {
+    if (token) {
+      const interval = setInterval(() => {
+        fetchUserData(token);
+      }, 10000); // 10 seconds
+      return () => clearInterval(interval);
+    }
+  }, [token]);
+
   const fetchUserData = async (authToken: string) => {
     try {
       const response = await fetch('http://localhost:5000/api/users/me', {
@@ -69,6 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
       });
       
       if (response.ok) {
@@ -83,10 +101,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const login = (authToken: string) => {
+  const login = (authToken: string, userObj: User) => {
     localStorage.setItem('leasemate_token', authToken);
     setToken(authToken);
-    fetchUserData(authToken);
+    setUser(userObj);
+    // Optionally, fetchUserData(authToken); // Only if you want to refresh from backend
   };
 
   const logout = () => {

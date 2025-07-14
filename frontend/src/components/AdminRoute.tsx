@@ -15,7 +15,7 @@ export default function AdminRoute({ children }: AdminRouteProps) {
   useEffect(() => {
     if (!isLoading) {
       if (!user) {
-        router.push('/admin/login');
+        router.push('/auth/login');
       } else if (user.role !== 'admin') {
         router.push('/dashboard');
       }

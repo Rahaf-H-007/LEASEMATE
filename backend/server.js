@@ -1,14 +1,21 @@
 const express = require('express');
 require('dotenv').config();
+const cors = require('cors');
 const connectDB = require('./config/db');
 const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
-const unitRouter = require('./routes/unit.route')
 const path = require('path');
-const httpStatusText = require("./utils/httpStatusText");
 
 const app = express();
 connectDB();
+
+// CORS configuration
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 app.use(express.json());
 
@@ -18,13 +25,11 @@ app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/units', unitRouter)
 
 //global error handler
-//route=>controller name=>asyncwrapper returns function which calls actual controller function with next and then passes it here
 app.use((error, req, res, next) => {
   res.status(error.statusCode || 500).json({
-    status: error.StatusText || httpStatusText.ERROR,
+    status: error.StatusText || 'ERROR',
     message: error.message,
     code: error.statusCode || 500,
     data: null,

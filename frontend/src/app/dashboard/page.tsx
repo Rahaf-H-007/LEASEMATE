@@ -4,12 +4,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import VerificationCheck from '@/components/VerificationCheck';
 import Navbar from '@/components/Navbar';
-import { useLanguage } from '@/contexts/LanguageContext';
-
+// تم حذف useLanguage
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { t } = useLanguage();
 
   return (
     <ProtectedRoute>
@@ -21,10 +19,10 @@ export default function Dashboard() {
           <div className="max-w-7xl mx-auto">
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                {t('dashboard.welcome', { name: user?.name || '' })}
+                {`مرحبًا ${user?.name || ''} في لوحة التحكم`}
               </h1>
               <p className="text-gray-600 dark:text-gray-300">
-                {t('dashboard.subtitle', { item: user?.role === 'landlord' ? t('dashboard.yourProperties') : t('dashboard.yourLeases') })}
+                {user?.role === 'landlord' ? 'هذه ممتلكاتك المعروضة' : 'هذه عقود الإيجار الخاصة بك'}
               </p>
             </div>
 
@@ -63,18 +61,18 @@ export default function Dashboard() {
                     <div>
                       <h3 className="font-semibold text-gray-900 dark:text-white">
                         {user.verificationStatus.status === 'approved' 
-                          ? 'Approved'
+                          ? 'تم التوثيق'
                           : user.verificationStatus.status === 'rejected'
-                          ? 'Rejected'
-                          : 'Pending'
+                          ? 'مرفوض'
+                          : 'قيد المراجعة'
                         }
                       </h3>
                       <p className="text-sm text-gray-600 dark:text-gray-300">
                         {user.verificationStatus.status === 'approved'
-                          ? 'Your identity has been verified successfully.'
+                          ? 'تم توثيق هويتك بنجاح.'
                           : user.verificationStatus.status === 'rejected'
-                          ? 'Your verification was rejected. Please contact support.'
-                          : 'Your documents are being reviewed by our team.'
+                          ? 'تم رفض التوثيق. يرجى التواصل مع الدعم.'
+                          : 'يتم الآن مراجعة مستنداتك من قبل فريقنا.'
                         }
                       </p>
                     </div>
@@ -86,18 +84,18 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* Quick Stats */}
               <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 shadow-lg">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('dashboard.quickStats')}</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">إحصائيات سريعة</h3>
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-300">{t('dashboard.active', { item: user?.role === 'landlord' ? t('dashboard.yourProperties') : t('dashboard.yourLeases') })}</span>
+                    <span className="text-gray-600 dark:text-gray-300">{user?.role === 'landlord' ? 'عدد الممتلكات النشطة' : 'عدد العقود النشطة'}</span>
                     <span className="font-bold text-gray-900 dark:text-white">3</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-300">{t('dashboard.total', { item: user?.role === 'landlord' ? 'Income' : 'Rent' })}</span>
+                    <span className="text-gray-600 dark:text-gray-300">{user?.role === 'landlord' ? 'إجمالي الدخل' : 'إجمالي الإيجار'}</span>
                     <span className="font-bold text-orange-600 dark:text-orange-400">$3,600</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-300">{t('dashboard.pendingTasks')}</span>
+                    <span className="text-gray-600 dark:text-gray-300">مهام قيد الانتظار</span>
                     <span className="font-bold text-gray-900 dark:text-white">2</span>
                   </div>
                 </div>
@@ -105,35 +103,35 @@ export default function Dashboard() {
 
               {/* Recent Activity */}
               <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 shadow-lg">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('dashboard.recentActivity')}</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">آخر الأنشطة</h3>
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 bg-orange-500 dark:bg-orange-400 rounded-full"></div>
-                    <span className="text-sm text-gray-600 dark:text-gray-300">{t('dashboard.rentReceived')}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300">تم استلام دفعة إيجار</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 bg-green-500 dark:bg-green-400 rounded-full"></div>
-                    <span className="text-sm text-gray-600 dark:text-gray-300">{t('dashboard.maintenanceResolved')}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300">تم حل طلب صيانة</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 bg-yellow-500 dark:bg-yellow-400 rounded-full"></div>
-                    <span className="text-sm text-gray-600 dark:text-gray-300">{t('dashboard.contractRenewal')}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300">تجديد عقد</span>
                   </div>
                 </div>
               </div>
 
               {/* Quick Actions */}
               <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 shadow-lg">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('dashboard.quickActions')}</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">إجراءات سريعة</h3>
                 <div className="space-y-3">
                   <button className="w-full text-left p-3 rounded-lg bg-orange-500 dark:bg-orange-600 text-white font-medium hover:bg-orange-600 dark:hover:bg-orange-700 transition-colors">
-                    {user?.role === 'landlord' ? t('dashboard.addProperty') : t('dashboard.submitRequest')}
+                    {user?.role === 'landlord' ? 'إضافة عقار' : 'إرسال طلب'}
                   </button>
                   <button className="w-full text-left p-3 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                    {t('dashboard.viewDocuments')}
+                    عرض المستندات
                   </button>
                   <button className="w-full text-left p-3 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                    {t('dashboard.contactSupport')}
+                    تواصل مع الدعم
                   </button>
                 </div>
               </div>
@@ -142,31 +140,31 @@ export default function Dashboard() {
             {/* Main Content Area */}
             <div className="mt-8 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 shadow-lg">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                {user?.role === 'landlord' ? t('dashboard.yourProperties') : t('dashboard.yourLeases')}
+                {user?.role === 'landlord' ? 'ممتلكاتك' : 'عقودك'}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="bg-white dark:bg-gray-900 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Sunset Villa</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">456 Ocean View Drive</p>
+                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">فيلا الغروب</h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">456 شارع أوشن فيو</p>
                   <div className="flex justify-between items-center">
                     <span className="text-orange-600 dark:text-orange-400 font-bold">$1,200/mo</span>
-                    <span className="text-xs bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100 px-2 py-1 rounded-full">Active</span>
+                    <span className="text-xs bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100 px-2 py-1 rounded-full">نشط</span>
                   </div>
                 </div>
                 <div className="bg-white dark:bg-gray-900 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Urban Loft</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">123 Main Street</p>
+                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">شقة المدينة</h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">123 شارع الرئيسي</p>
                   <div className="flex justify-between items-center">
                     <span className="text-orange-600 dark:text-orange-400 font-bold">$1,500/mo</span>
-                    <span className="text-xs bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100 px-2 py-1 rounded-full">Active</span>
+                    <span className="text-xs bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100 px-2 py-1 rounded-full">نشط</span>
                   </div>
                 </div>
                 <div className="bg-white dark:bg-gray-900 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Garden House</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">789 Pine Street</p>
+                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">منزل الحديقة</h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">789 شارع باين</p>
                   <div className="flex justify-between items-center">
                     <span className="text-orange-600 dark:text-orange-400 font-bold">$1,800/mo</span>
-                    <span className="text-xs bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-100 px-2 py-1 rounded-full">Pending</span>
+                    <span className="text-xs bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-100 px-2 py-1 rounded-full">قيد المراجعة</span>
                   </div>
                 </div>
               </div>

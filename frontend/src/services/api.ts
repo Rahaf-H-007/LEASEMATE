@@ -16,8 +16,20 @@ export interface LoginData {
 export interface AuthResponse {
   _id: string;
   name: string;
-  role: string;
+  role: 'landlord' | 'tenant' | 'admin';
   token: string;
+  verificationStatus?: {
+    status: 'pending' | 'approved' | 'rejected';
+    idVerified?: boolean;
+    faceMatched?: boolean;
+    uploadedIdUrl?: string;
+    selfieUrl?: string;
+    idData?: {
+      name?: string;
+      idNumber?: string;
+      birthDate?: string;
+    };
+  };
 }
 
 class ApiService {
@@ -31,17 +43,25 @@ class ApiService {
         'Content-Type': 'application/json',
         ...options.headers,
       },
+      credentials: 'include',
       ...options,
     };
 
-    const response = await fetch(url, config);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-    }
+    try {
+      const response = await fetch(url, config);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
 
-    return response.json();
+      return response.json();
+    } catch (error) {
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        throw new Error('Network error: Unable to connect to the server. Please check if the backend server is running.');
+      }
+      throw error;
+    }
   }
 
   async register(data: RegisterData): Promise<AuthResponse> {
@@ -68,27 +88,28 @@ class ApiService {
 
   async uploadVerification(formData: FormData, token: string) {
     const url = `${API_BASE_URL}/users/me/verify-id`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-      body: formData,
-    });
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        credentials: 'include',
+        body: formData,
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        throw new Error('Network error: Unable to connect to the server. Please check if the backend server is running.');
+      }
+      throw error;
     }
-
-    return response.json();
-  }
-
-  async adminLogin(data: { email: string; password: string }) {
-    return this.request('/admin/login', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
   }
 
   async getUsers(token: string) {
