@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -7,6 +7,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import Logo from './Logo';
+import { Bell } from 'lucide-react';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -14,13 +16,14 @@ export default function Navbar() {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { language, setLanguage, t } = useLanguage();
+  const { notifications, loading } = useNotifications();
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const toggleLanguage = () => {
     setLanguage(language === 'en' ? 'ar' : 'en');
   };
 
   const handleThemeToggle = () => {
-    console.log('Theme button clicked, current theme:', theme);
     toggleTheme();
   };
 
@@ -37,25 +40,30 @@ export default function Navbar() {
         </div>
 
         <nav className="hidden md:flex flex-1 justify-center items-center gap-6">
-          <Link 
-            href="/properties" 
-            className="text-gray-700 hover:text-orange-600 transition-colors duration-300 font-medium"
-          >
+          <Link href="/properties" className="text-gray-700 hover:text-orange-600 transition-colors duration-300 font-medium">
             {t('navbar.properties')}
           </Link>
-          <Link 
-            href="/leases" 
-            className="text-gray-700 hover:text-orange-600 transition-colors duration-300 font-medium"
-          >
+          <Link href="/leases" className="text-gray-700 hover:text-orange-600 transition-colors duration-300 font-medium">
             {t('navbar.leases')}
           </Link>
-          <Link 
-            href="/about" 
-            className="text-gray-700 hover:text-orange-600 transition-colors duration-300 font-medium"
-          >
+          <Link href="/about" className="text-gray-700 hover:text-orange-600 transition-colors duration-300 font-medium">
             {t('navbar.about')}
           </Link>
         </nav>
+
+        {/* Notification Bell */}
+        <div className="mx-5">
+          {user && (
+            <Link href="/notifications" className="relative">
+              <Bell className="w-6 h-6 text-gray-700 hover:text-orange-600" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                  {unreadCount}
+                </span>
+              )}
+            </Link>
+          )}
+        </div>
 
         <div className="flex items-center gap-4">
           {/* Language Toggle */}
@@ -65,7 +73,6 @@ export default function Navbar() {
             aria-label="Toggle language"
             title={language === 'en' ? 'Switch to Arabic' : 'التبديل إلى الإنجليزية'}
           >
-            {/* Globe Icon */}
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
               <path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20" stroke="currentColor" strokeWidth="2" />
@@ -98,8 +105,8 @@ export default function Navbar() {
                 aria-label="User Profile"
               >
                 {user.avatarUrl ? (
-                  <img 
-                    src={user.avatarUrl} 
+                  <img
+                    src={user.avatarUrl}
                     alt={user.name}
                     className="w-full h-full rounded-full object-cover"
                   />
@@ -156,80 +163,18 @@ export default function Navbar() {
               </Link>
             </div>
           )}
-
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden flex cursor-pointer items-center justify-center rounded-lg h-10 w-10 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
-            aria-label="Toggle menu"
-          >
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-            </svg>
-          </button>
         </div>
-
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="absolute top-full left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 md:hidden">
-            <div className="px-6 py-4 space-y-4">
-              <Link
-                href="/properties"
-                className="block text-gray-700 hover:text-orange-600 transition-colors font-medium"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                {t('navbar.properties')}
-              </Link>
-              <Link
-                href="/leases"
-                className="block text-gray-700 hover:text-orange-600 transition-colors font-medium"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                {t('navbar.leases')}
-              </Link>
-              <Link
-                href="/about"
-                className="block text-gray-700 hover:text-orange-600 transition-colors font-medium"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                {t('navbar.about')}
-              </Link>
-              {user && (
-                <>
-                  <hr className="border-gray-200" />
-                  <Link
-                    href="/dashboard"
-                    className="block text-gray-700 hover:text-orange-600 transition-colors font-medium"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    {t('navbar.dashboard')}
-                  </Link>
-                  <Link
-                    href="/profile"
-                    className="block text-gray-700 hover:text-orange-600 transition-colors font-medium"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    {t('navbar.profile')}
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="block w-full text-left text-gray-700 hover:text-orange-600 transition-colors font-medium"
-                  >
-                    {t('navbar.logout')}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        )}
       </header>
+
       {/* Verification Banner */}
       {user && user.verificationStatus && user.verificationStatus.status !== 'approved' && (
         <div className="mt-[72px] w-full bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 text-center py-3 px-4 shadow-sm z-40">
-          {user.verificationStatus.status === 'pending' && 'Your account is under verification. Some features may be limited until approval.'}
-          {user.verificationStatus.status === 'rejected' && 'Your verification was rejected. Please re-upload your documents.'}
+          {user.verificationStatus.status === 'pending' &&
+            'Your account is under verification. Some features may be limited until approval.'}
+          {user.verificationStatus.status === 'rejected' &&
+            'Your verification was rejected. Please re-upload your documents.'}
         </div>
       )}
     </>
   );
-} 
+}
