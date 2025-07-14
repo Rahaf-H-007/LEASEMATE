@@ -5,9 +5,9 @@ const {
   getProfile,
   updateProfile,
   uploadAvatar,uploadVerification
-} = require("../controllers/userController");
-const { protect } = require("../middlewares/auth");
-const upload = require("../middlewares/upload");
+} = require("../controllers/user.controller");
+const { protect } = require("../middlewares/auth.middleware");
+const upload = require("../middlewares/upload.middleware");
 
 const router = express.Router();
 

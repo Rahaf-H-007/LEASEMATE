@@ -1,6 +1,6 @@
 const User = require("../models/user.model");
 const generateToken = require("../utils/generateToken");
-const uploadToCloudinary = require("../utils/uploadToCloudinary");
+const uploadToCloudinary = require("../utils/uploadtoCloudinary");
 
 // Register
 const register = async (req, res) => {

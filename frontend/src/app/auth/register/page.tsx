@@ -47,7 +47,7 @@ export default function RegisterPage() {
       };
 
       const response = await apiService.register(registerData);
-      login(response.token);
+      login(response.token,response);
       router.push('/auth/verification');
     } catch (err: unknown) {
       const error = err as Error;
