@@ -15,7 +15,7 @@ export default function Dashboard() {
         <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
           <Navbar />
         
-        <main className="pt-24 px-4">
+        <main className="pt-14 px-4"> {/* pt-14 matches new Navbar height */}
           <div className="max-w-7xl mx-auto">
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">

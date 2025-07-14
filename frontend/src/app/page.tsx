@@ -116,7 +116,7 @@ export default function Home() {
         </div>
       )}
       {/* Hero Section */}
-      <main className="pt-20 pb-16 px-4">
+      <main className="pt-14 pb-16 px-4"> {/* pt-14 matches new Navbar height */}
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
            
