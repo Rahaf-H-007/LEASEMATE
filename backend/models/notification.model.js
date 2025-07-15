@@ -4,36 +4,49 @@ const notificationSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     required: true,
-    ref: 'User'
+    ref: 'User',
   },
   senderId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
+  leaseId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Lease',
+  },
+  tenantId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  landlordId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
   title: {
     type: String,
-    required: true
+    required: true,
   },
   message: {
     type: String,
-    required: true
+    required: true,
   },
   type: {
     type: String,
-    enum: ['PAYMENT_DUE', 'MAINTENANCE_UPDATE', 'LEASE_EXPIRY', 'GENERAL','VERIFICATION'],
-    default: 'GENERAL'
+    enum: [ 'LEASE_EXPIRED', 'GENERAL'],
+    default: 'GENERAL',
+    // 'PAYMENT_DUE', , 'VERIFICATION' , 'MAINTENANCE_UPDATE'
   },
   isRead: {
     type: Boolean,
-    default: false
+    default: false,
   },
-  link: { // url 'frontend' path to be opened when the tentant clickes in the notification
-    type: String
+  link: {
+    type: String,
   },
   createdAt: {
     type: Date,
-    default: Date.now
-  }
+    default: Date.now,
+  },
 });
 
 module.exports = mongoose.model('Notification', notificationSchema);
