@@ -20,6 +20,58 @@ export default function NotificationsPage() {
       ? notifications
       : notifications.filter((n) => n.type === filter);
 
+  const handleNotificationClick = async (notification: any) => {
+    if (!notification.isRead) {
+      await markSingleAsRead(notification._id);
+    }
+
+    let targetLink = notification.link;
+
+    if (
+      notification.type === "LEASE_EXPIRED" &&
+      notification.leaseId
+    ) {
+      // Determine who the current user wants to review
+      let revieweeId = null;
+
+      if (user?.role === "tenant") {
+        revieweeId = notification.landlordId;
+      } else if (user?.role === "landlord") {
+        revieweeId = notification.tenantId;
+      }
+
+      if (revieweeId) {
+        try {
+          const res = await fetch(
+            `http://localhost:5000/api/reviews/check/${notification.leaseId}/${revieweeId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          const data = await res.json();
+
+          if (data.exists) {
+            alert("You have posted a review before.");
+            return;
+          } else {
+            targetLink = `/leave-review?leaseId=${notification.leaseId}&revieweeId=${revieweeId}`;
+          }
+        } catch (error) {
+          console.error("Error checking review existence:", error);
+          alert("Error checking review existence.");
+          return;
+        }
+      }
+    }
+
+    if (targetLink) {
+      router.push(targetLink);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
       <Navbar />
@@ -48,20 +100,14 @@ export default function NotificationsPage() {
                 className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 py-2 pl-3 pr-8 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 transition"
               >
                 <option value="ALL">{t("notifications.all")}</option>
-                <option value="PAYMENT_DUE">
-                  {t("notifications.payments")}
-                </option>
                 <option value="MAINTENANCE_UPDATE">
                   {t("notifications.maintenance")}
                 </option>
-                <option value="LEASE_EXPIRY">
+                <option value="LEASE_EXPIRED">
                   {t("notifications.contracts")}
                 </option>
                 <option value="GENERAL">
                   {t("notifications.general")}
-                </option>
-                <option value="VERIFICATION">
-                  {t("notifications.verification")}
                 </option>
               </select>
             </div>
@@ -81,38 +127,33 @@ export default function NotificationsPage() {
                 {t("notifications.noNotifications")}
               </p>
             ) : (
-              filteredNotifications.map((notification) => (
+              filteredNotifications.map((notification, index) => (
                 <div
-                  key={notification._id}
+                  key={index}
                   className={`relative rounded-xl p-4 pb-10 shadow border transition-all bg-white dark:bg-gray-800 cursor-pointer ${
                     notification.isRead
                       ? "opacity-80 border-gray-200 dark:border-gray-700"
                       : "border-orange-300"
                   }`}
+                  onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="flex justify-between items-start">
-                    <div
-                      onClick={() => {
-                        if (notification.link) router.push(notification.link);
-                      }}
-                      className="flex-1"
-                    >
+                    <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
                         {notification.title}
                       </h3>
                       <p className="text-sm text-gray-700 dark:text-gray-300">
                         {notification.message}
                       </p>
-                      {notification.senderId?.name && (
+                      {/* {notification.senderId?.name && (
                         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          {t("notifications.from")}{" "}
-                          {notification.senderId.name}
+                          {t("notifications.from")} {notification.senderId.name}
                         </p>
-                      )}
+                      )} */}
                     </div>
                   </div>
 
-                  {/* Date aligned left or right */}
+                  {/* Date */}
                   <span
                     className={`absolute top-3 ${
                       language === "ar" ? "left-4" : "right-4"
@@ -121,27 +162,24 @@ export default function NotificationsPage() {
                     {new Date(notification.createdAt).toLocaleString()}
                   </span>
 
-                  {/* Check icon aligned left or right at bottom */}
+                  {/* Check icon */}
                   <div
                     className={`absolute bottom-3 ${
                       language === "ar" ? "left-4" : "right-4"
                     }`}
                   >
-                    {!notification.isRead ? (
-                      <button
-                        onClick={() => markSingleAsRead(notification._id)}
-                        className="text-orange-500 hover:text-orange-600 dark:hover:text-orange-400"
-                        title={t("notifications.markAsRead")}
-                      >
-                        <CheckCheck size={20} />
-                      </button>
-                    ) : (
+                    {notification.isRead ? (
                       <span
                         className="text-green-500 dark:text-green-400"
                         title={t("notifications.read")}
                       >
                         <Check size={20} />
                       </span>
+                    ) : (
+                      <CheckCheck
+                        size={20}
+                        className="text-orange-500 hover:text-orange-600 dark:hover:text-orange-400"
+                      />
                     )}
                   </div>
                 </div>
