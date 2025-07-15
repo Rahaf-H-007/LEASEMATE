@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect,useRef } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { io, Socket } from 'socket.io-client';
 
@@ -13,15 +13,22 @@ interface User {
   avatarUrl?: string;
   verificationStatus?: {
     status: 'pending' | 'approved' | 'rejected';
-    idVerified: boolean;
-    faceMatched: boolean;
+    idVerified?: boolean;
+    faceMatched?: boolean;
+    uploadedIdUrl?: string;
+    selfieUrl?: string;
+    idData?: {
+      name?: string;
+      idNumber?: string;
+      birthDate?: string;
+    };
   };
 }
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (token: string) => void;
+  login: (token: string, user: User) => void;
   logout: () => void;
   isLoading: boolean;
   socket: Socket | null;
@@ -41,17 +48,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const socketRef = useRef<Socket | null>(null);
+ const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
+    // Check for existing token on app load
     const storedToken = localStorage.getItem('leasemate_token');
     if (storedToken) {
       try {
         const decoded = jwtDecode(storedToken) as any;
         const currentTime = Date.now() / 1000;
-
+        
         if (decoded.exp > currentTime) {
           setToken(storedToken);
+          // Fetch user data
           fetchUserData(storedToken);
         } else {
           localStorage.removeItem('leasemate_token');
@@ -61,8 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
     setIsLoading(false);
-
-    return () => {
+  return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
       }
@@ -91,15 +99,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+
+  // Polling: fetch user data every 10 seconds to update verification status automatically
+  useEffect(() => {
+    if (token) {
+      const interval = setInterval(() => {
+        fetchUserData(token);
+      }, 10000); // 10 seconds
+      return () => clearInterval(interval);
+    }
+  }, [token]);
+
   const fetchUserData = async (authToken: string) => {
     try {
       const response = await fetch('http://localhost:5000/api/users/me', {
         headers: {
-          Authorization: `Bearer ${authToken}`,
+          'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
       });
-
+      
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
@@ -113,34 +133,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const login = (authToken: string) => {
+  const login = (authToken: string, userObj: User) => {
     localStorage.setItem('leasemate_token', authToken);
     setToken(authToken);
-    fetchUserData(authToken);
+    setUser(userObj);
+    fetchUserData(authToken);    
   };
 
   const logout = () => {
     localStorage.removeItem('leasemate_token');
     setToken(null);
     setUser(null);
-    if (socketRef.current) {
+      if (socketRef.current) {
       socketRef.current.disconnect();
       socketRef.current = null;
     }
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        login,
-        logout,
-        isLoading,
-        socket: socketRef.current,
-      }}
-    >
+    <AuthContext.Provider value={{ user, token, login, logout, isLoading ,socket: socketRef.current}}>
       {children}
     </AuthContext.Provider>
   );
-};
+}; 

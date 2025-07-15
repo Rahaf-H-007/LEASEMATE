@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/services/api';
-import { useLanguage } from '@/contexts/LanguageContext';
 import Navbar from '@/components/Navbar';
 
 export default function VerificationPage() {
@@ -15,9 +14,9 @@ export default function VerificationPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const { user, token } = useAuth();
   const router = useRouter();
-  const { t } = useLanguage();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'idFront' | 'idBack' | 'selfie') => {
     const file = e.target.files?.[0];
@@ -31,14 +30,14 @@ export default function VerificationPage() {
   const handleContinue = async () => {
     if (step === 1) {
       if (!idFrontFile || !idBackFile) {
-        setError('Please upload both front and back of your ID');
+        setError('من فضلك قم بتحميل صورة أمامية وخلفية لبطاقتك');
         return;
       }
       setStep(2);
       setError('');
     } else if (step === 2) {
       if (!selfieFile) {
-        setError('Please upload your selfie');
+        setError('من فضلك قم بتحميل صورة شخصية بالكاميرا الأمامية');
         return;
       }
       
@@ -60,7 +59,7 @@ export default function VerificationPage() {
      
       } catch (err: unknown) {
         const error = err as Error;
-        setError(error.message || 'Upload failed');
+        setError(error.message || 'تحميل غير ناجح');
       } finally {
         setIsLoading(false);
       }
@@ -81,6 +80,47 @@ export default function VerificationPage() {
     }
   };
 
+  // If verification is rejected and user hasn't clicked Edit & Re-upload, show rejection message and images
+  if (user?.verificationStatus?.status === 'rejected' && !showForm) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
+        <Navbar />
+        <div className="flex flex-col items-center justify-center min-h-screen">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-8 text-center">
+            <h2 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-2">
+              تم رفض التحقق
+            </h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              تم رفض تحققك. من فضلك قم بتحميل الوثائق مرة أخرى.
+            </p>
+            <div className="flex flex-col items-center gap-4 mb-4">
+              {user.verificationStatus?.uploadedIdUrl && (
+                <img
+                  src={user.verificationStatus.uploadedIdUrl}
+                  alt="Uploaded ID"
+                  className="w-48 h-32 object-cover rounded border"
+                />
+              )}
+              {user.verificationStatus?.selfieUrl && (
+                <img
+                  src={user.verificationStatus.selfieUrl}
+                  alt="Uploaded Selfie"
+                  className="w-32 h-32 object-cover rounded-full border"
+                />
+              )}
+            </div>
+            <button
+              onClick={() => setShowForm(true)}
+              className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold"
+            >
+              تعديل وإعادة تحميل
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (success) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
@@ -91,8 +131,8 @@ export default function VerificationPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Waiting for Admin Approval</h2>
-            <p className="text-gray-600 dark:text-gray-300 mb-6">Your verification documents have been submitted successfully. Please wait for admin approval.</p>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">الإنتظار للموافقة</h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">تم تقديم وثائق التحقق بنجاح. يرجى الانتظار للموافقة.</p>
             <div className="animate-pulse">
               <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
               <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
@@ -104,6 +144,7 @@ export default function VerificationPage() {
     );
   }
 
+  // If showForm is true or not rejected, show the upload form as usual
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
       <Navbar />
@@ -118,21 +159,19 @@ export default function VerificationPage() {
                   <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">LeaseMate</h1>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">التحقق </h1>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              {t('verification.title')}
-            </h2>
-            <p className="text-gray-600 dark:text-gray-300">
-              {t('verification.subtitle')}
-            </p>
+           
+            <h1 className="text-gray-600 dark:text-gray-300">
+              سنقارن صورة بطاقتك بصورتك.
+            </h1>
           </div>
 
           {/* Progress Bar */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {t('verification.step')} {step} {t('verification.of')} 2
+                الخطوة {step} من 2
               </span>
               <span className="text-sm text-gray-500 dark:text-gray-400">
                 {Math.round((step / 2) * 100)}%
@@ -150,12 +189,12 @@ export default function VerificationPage() {
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-8">
             <div className="text-center mb-8">
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                {step === 1 ? 'Upload ID Documents' : 'Upload Selfie'}
+                {step === 1 ? 'تحميل وثائق الهوية' : 'تحميل صورة شخصية بالكاميرا الأمامية'}
               </h3>
               <p className="text-gray-600 dark:text-gray-300">
                 {step === 1 
-                  ? 'Please upload clear photos of your government-issued ID (front and back).'
-                  : "We'll use face recognition to match your ID with your photo."
+                  ? 'من فضلك قم بتحميل صورة أمامية وخلفية لبطاقتك.'
+                  : "سنستخدم تعرف الوجه لمطابقة صورة بطاقتك بصورتك."
                 }
               </p>
             </div>
@@ -201,7 +240,7 @@ export default function VerificationPage() {
                             ? 'text-green-700 dark:text-green-300' 
                             : 'text-gray-900 dark:text-white'
                         }`}>
-                          {idFrontFile ? 'Front ID Uploaded ✓' : 'Upload Front of ID'}
+                          {idFrontFile ? 'تم تحميل الهوية الأمامية ✓' : 'تحميل صورة أمامية للبطاقة'}
                         </span>
                       </label>
                       <input 
@@ -244,7 +283,7 @@ export default function VerificationPage() {
                             ? 'text-green-700 dark:text-green-300' 
                             : 'text-gray-900 dark:text-white'
                         }`}>
-                          {idBackFile ? 'Back ID Uploaded ✓' : 'Upload Back of ID'}
+                          {idBackFile ? 'تم تحميل الهوية الخلفية ✓' : 'تحميل صورة خلفية للبطاقة'}
                         </span>
                       </label>
                       <input 
@@ -287,10 +326,10 @@ export default function VerificationPage() {
                         ? 'text-green-700 dark:text-green-300' 
                         : 'text-gray-900 dark:text-white'
                     }`}>
-                      {selfieFile ? 'Selfie Uploaded ✓' : 'Upload Selfie'}
+                      {selfieFile ? 'تم تحميل الصورة الشخصية ✓' : 'تحميل صورة شخصية بالكاميرا الأمامية'}
                     </span>
                     <span className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                      {t('verification.dragDrop')}
+                      قم بالسحب والإفلات لتحميل الصورة
                     </span>
                   </label>
                   <input 
@@ -313,10 +352,10 @@ export default function VerificationPage() {
                 {isLoading ? (
                   <div className="flex items-center justify-center">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    'Uploading...'
+                    'تحميل...'
                   </div>
                 ) : (
-                  'Continue'
+                  'استمرار'
                 )}
               </button>
             </div>
