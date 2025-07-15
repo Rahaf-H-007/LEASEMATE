@@ -21,7 +21,7 @@ const leaseSchema = new mongoose.Schema({
   rentAmount: Number,
   status: {
     type: String,
-    enum: ['active', 'terminated', 'pending'],
+    enum: ['active', 'expired', 'pending'],
     default: 'active'
   }
 });
