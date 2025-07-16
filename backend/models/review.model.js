@@ -26,6 +26,16 @@ const reviewSchema = new mongoose.Schema({
   comment: {
     type: String,
   },
+    sentiment: {
+    type: String, // e.g. "positive", "negative", "neutral"
+  },
+  keywords: [{
+    type: String
+  }],
+  abusive: {
+    type: Boolean,
+    default: false,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
