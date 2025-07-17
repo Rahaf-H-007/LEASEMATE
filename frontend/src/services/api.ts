@@ -254,6 +254,40 @@ class ApiService {
 
     return response.data.unit;
   }
+
+  async createUnit(unitData: FormData, token: string): Promise<Unit> {
+    const url = `${API_BASE_URL}/units`;
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include",
+        body: unitData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || `HTTP error! status: ${response.status}`
+        );
+      }
+
+      const result = await response.json();
+      return result.data.unit;
+    } catch (error) {
+      if (
+        error instanceof TypeError &&
+        error.message.includes("Failed to fetch")
+      ) {
+        throw new Error(
+          "Network error: Unable to connect to the server. Please check if the backend server is running."
+        );
+      }
+      throw error;
+    }
+  }
 }
 
 export const apiService = new ApiService();

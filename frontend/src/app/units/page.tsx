@@ -154,6 +154,8 @@ export default function UnitsPage() {
           console.log("Using location-based search:", userLocation);
         }
 
+        console.log("API Params being sent:", apiParams);
+
         const response = await apiService.getUnits(undefined, apiParams);
 
         console.log("API Response:", response); // Debug log
@@ -290,7 +292,11 @@ export default function UnitsPage() {
               <SearchBar value={search} onChange={handleSearchChange} />
             </div>
             <h2 className="text-[var(--dark-brown)] text-3xl font-bold leading-tight tracking-tight mb-6 text-right">
-              {loading ? "جاري التحميل..." : search ? `نتائج البحث: ${totalUnits} وحدات` : `عرض ${totalUnits} وحدات`}
+              {loading
+                ? "جاري التحميل..."
+                : search
+                ? `نتائج البحث: ${totalUnits} وحدات`
+                : `عرض ${totalUnits} وحدات`}
             </h2>
 
             {/* Loading State */}
@@ -370,3 +376,4 @@ export default function UnitsPage() {
     </div>
   );
 }
+//TODO: check why this doesnt show created units

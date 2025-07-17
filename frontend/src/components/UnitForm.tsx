@@ -25,10 +25,14 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
     field: string,
     value: string | boolean | File[]
   ) => {
-    onChange({
-      ...data,
-      [field]: value,
-    });
+    const updatedData = { ...data, [field]: value };
+
+    // Special handling for furnished status
+    if (field === "isFurnished") {
+      updatedData.isFurnishedSelected = true;
+    }
+
+    onChange(updatedData);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -351,10 +355,9 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
               <input
                 type="radio"
                 name="furnished"
-                checked={data.isFurnished}
+                checked={data.isFurnished === true && data.isFurnishedSelected}
                 onChange={() => {
                   handleInputChange("isFurnished", true);
-                  handleInputChange("isFurnishedSelected", true);
                 }}
                 className="w-5 h-5 text-orange-500 border-gray-300 focus:ring-orange-500"
               />
@@ -366,10 +369,9 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
               <input
                 type="radio"
                 name="furnished"
-                checked={!data.isFurnished && data.isFurnishedSelected}
+                checked={data.isFurnished === false && data.isFurnishedSelected}
                 onChange={() => {
                   handleInputChange("isFurnished", false);
-                  handleInputChange("isFurnishedSelected", true);
                 }}
                 className="w-5 h-5 text-orange-500 border-gray-300 focus:ring-orange-500"
               />

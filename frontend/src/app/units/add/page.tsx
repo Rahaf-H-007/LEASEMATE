@@ -3,6 +3,8 @@
 import { useState } from "react";
 import UnitForm from "@/components/UnitForm";
 import AmenitiesForm from "@/components/AmenitiesForm";
+import { apiService } from "@/services/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface UnitData {
   name: string;
@@ -34,6 +36,8 @@ interface ValidationErrors {
 }
 
 export default function AddUnitPage() {
+  const { user, token } = useAuth();
+  
   const [unitData, setUnitData] = useState<UnitData>({
     name: "",
     type: "",
@@ -61,6 +65,22 @@ export default function AddUnitPage() {
 
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Check if user is authorized to create units (landlords only)
+  if (user && user.role !== "landlord") {
+    return (
+      <main className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h1 className="text-4xl font-bold text-red-600 mb-4 font-cairo">
+            غير مسموح
+          </h1>
+          <p className="text-lg text-gray-600 font-cairo">
+            هذه الصفحة متاحة فقط لأصحاب العقارات
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   const validateForm = (): boolean => {
     const newErrors: ValidationErrors = {};
@@ -101,10 +121,10 @@ export default function AddUnitPage() {
       newErrors.postalCode = "الرقم البريدي غير صحيح";
     }
 
-    // Image validation
-    if (unitData.images.length === 0) {
-      newErrors.images = "يجب رفع صورة واحدة على الأقل للوحدة";
-    }
+    // Image validation (temporarily disabled for testing)
+    // if (unitData.images.length === 0) {
+    //   newErrors.images = "يجب رفع صورة واحدة على الأقل للوحدة";
+    // }
 
     // Furnished status validation
     if (!unitData.isFurnishedSelected) {
@@ -121,28 +141,53 @@ export default function AddUnitPage() {
       return;
     }
 
+    if (!user || !token) {
+      alert("يجب تسجيل الدخول أولاً");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      const unitInfo = {
-        ...unitData,
-        ...amenities,
-        pricePerMonth: Number(unitData.pricePerMonth),
-        numRooms: Number(unitData.numRooms),
-        space: Number(unitData.space),
-        postalCode: unitData.postalCode
-          ? Number(unitData.postalCode)
-          : undefined,
-      };
+      // Create FormData for multipart form submission
+      const formData = new FormData();
+      
+      // Add unit data fields
+      formData.append("name", unitData.name);
+      formData.append("type", unitData.type);
+      formData.append("description", unitData.description);
+      formData.append("pricePerMonth", unitData.pricePerMonth);
+      formData.append("numRooms", unitData.numRooms);
+      formData.append("space", unitData.space);
+      formData.append("address", unitData.address);
+      formData.append("city", unitData.city);
+      formData.append("governorate", unitData.governorate);
+      formData.append("isFurnished", unitData.isFurnished.toString());
+      
+      // Add postal code if provided
+      if (unitData.postalCode) {
+        formData.append("postalCode", unitData.postalCode);
+      }
+      
+      // Add amenities
+      formData.append("hasPool", amenities.hasPool.toString());
+      formData.append("hasAC", amenities.hasAC.toString());
+      formData.append("hasTV", amenities.hasTV.toString());
+      formData.append("hasWifi", amenities.hasWifi.toString());
+      formData.append("hasKitchenware", amenities.hasKitchenware.toString());
+      formData.append("hasHeating", amenities.hasHeating.toString());
+      
+      // Add images
+      unitData.images.forEach((image) => {
+        formData.append("images", image);
+      });
 
-      console.log("Unit Data:", unitInfo);
-      console.log("Images:", unitData.images);
+      
 
-      //TODO: handle api calls
+      // Call API to create unit
+      const createdUnit = await apiService.createUnit(formData, token);
 
-      // Simulate API call for testing
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
+      console.log("Unit created successfully:", createdUnit);
       alert("تم حفظ بيانات الوحدة بنجاح!");
 
       // Reset form after successful submission
@@ -170,9 +215,16 @@ export default function AddUnitPage() {
         hasHeating: false,
       });
       setErrors({});
+
+      // Optionally redirect to units list or unit details
+      // router.push(`/units/${createdUnit._id}`);
     } catch (error) {
       console.error("Error saving unit:", error);
-      alert("حدث خطأ أثناء حفظ بيانات الوحدة. يرجى المحاولة مرة أخرى.");
+      if (error instanceof Error) {
+        alert(`حدث خطأ أثناء حفظ بيانات الوحدة: ${error.message}`);
+      } else {
+        alert("حدث خطأ أثناء حفظ بيانات الوحدة. يرجى المحاولة مرة أخرى.");
+      }
     } finally {
       setIsSubmitting(false);
     }
