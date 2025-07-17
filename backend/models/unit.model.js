@@ -12,7 +12,7 @@ const unitSchema = new mongoose.Schema({
   },
   description: {
     type: String,
-    required: true
+    required: true,
   },
   images: {
     type: [String],
@@ -26,7 +26,7 @@ const unitSchema = new mongoose.Schema({
     ref: "User",
     // required: true
   },
-  
+
   pricePerMonth: {
     type: Number,
     // required: true,
@@ -48,6 +48,17 @@ const unitSchema = new mongoose.Schema({
   address: {
     type: String,
     // required: true,
+  },
+  location: {
+    type: {
+      type: String,
+      enum: ["Point"],
+      default: "Point",
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      default: [31.2357, 30.0444], // Default to Cairo coordinates
+    },
   },
   city: {
     type: String,
@@ -99,5 +110,8 @@ const unitSchema = new mongoose.Schema({
     enum: ["available", "booked", "under maintenance"],
   },
 });
+
+// geospatial index for location-based queries
+unitSchema.index({ location: "2dsphere" });
 
 module.exports = mongoose.model("Units", unitSchema);

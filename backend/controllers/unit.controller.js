@@ -8,7 +8,7 @@ const deleteFromCloudinary = require("../utils/deleteFromCloudinary");
 const extractPublicId = require("../utils/extractPublicId");
 
 const getAllUnits = asyncWrapper(async (req, res) => {
-  const { search, type, minPrice, maxPrice, page = 1, limit = 10 } = req.query;
+  const { search, type, minPrice, maxPrice, page = 1, limit = 10, lat, lng, radius = 50 } = req.query;
 
   // Build filter object
   let filter = {};
@@ -32,15 +32,64 @@ const getAllUnits = asyncWrapper(async (req, res) => {
     if (maxPrice) filter.pricePerMonth.$lte = Number(maxPrice);
   }
 
+  // Location-based filtering with fallback logic
+  let locationQuery = null;
+  if (lat && lng) {
+    // Convert radius from meters to radians (Earth radius ≈ 6378100 meters)
+    const radiusInRadians = Number(radius) / 6378100;
+    
+    locationQuery = {
+      location: {
+        $geoWithin: {
+          $centerSphere: [[Number(lng), Number(lat)], radiusInRadians]
+        }
+      }
+    };
+  }
+
   // Calculate pagination
   const skip = (page - 1) * limit;
 
-  const units = await Unit.find(filter)
-    .limit(Number(limit))
-    .skip(skip)
-    .sort({ createdAt: -1 });
+  let units = [];
+  let total = 0;
 
-  const total = await Unit.countDocuments(filter);
+  // Try location-based search first if coordinates provided
+  if (locationQuery) {
+    const locationFilter = { ...filter, ...locationQuery };
+    units = await Unit.find(locationFilter)
+      .limit(Number(limit))
+      .skip(skip);
+    total = await Unit.countDocuments(locationFilter);
+
+    // If no units found nearby, try governorate/city fallback
+    if (units.length === 0) {
+      console.log("No units found nearby, trying governorate/city fallback...");
+      
+      // Try to find units in the same governorate (you'd need a reverse geocoding service for this)
+      // For now, we'll search for units in major cities as fallback
+      const fallbackFilter = {
+        ...filter,
+        $or: [
+          { governorate: "القاهرة" },
+          { governorate: "الجيزة" },
+          { governorate: "الإسكندرية" }
+        ]
+      };
+      
+      units = await Unit.find(fallbackFilter)
+        .limit(Number(limit))
+        .skip(skip)
+        .sort({ createdAt: -1 });
+      total = await Unit.countDocuments(fallbackFilter);
+    }
+  } else {
+    // Regular search without location
+    units = await Unit.find(filter)
+      .limit(Number(limit))
+      .skip(skip)
+      .sort({ createdAt: -1 });
+    total = await Unit.countDocuments(filter);
+  }
 
   res.json({
     status: httpStatusText.SUCCESS,
