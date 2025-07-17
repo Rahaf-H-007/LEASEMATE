@@ -155,8 +155,8 @@ export default function UnitDetailPage() {
                 <div className="lg:col-span-2 space-y-8">
                   <UnitDetails
                     title={unit.name}
-                    rating={4.5} // You might want to add rating to the Unit interface
-                    reviews={0} // You might want to add reviews to the Unit interface
+                    rating={4.5}
+                    reviews={0}
                     location={location}
                     description={unit.description}
                   />
@@ -168,13 +168,13 @@ export default function UnitDetailPage() {
                   <div className="sticky top-24">
                     <RentSidebarCard
                       rent={unit.pricePerMonth}
-                      leaseDuration="١٢ شهر" // You might want to add this to the Unit interface
-                      securityDeposit={unit.pricePerMonth} // Usually same as rent, but you might want to add this to the Unit interface
+                      leaseDuration="١٢ شهر" 
+                      securityDeposit={unit.pricePerMonth}
                       availableFrom={
                         unit.status === "available" ? "متاح الآن" : "غير متاح"
                       }
                       manager={{
-                        name: "المالك", // We don't have landlord details in the unit object
+                        name: "المالك",
                         phone: "",
                         email: "",
                       }}

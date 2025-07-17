@@ -214,7 +214,7 @@ class ApiService {
     if (params) {
       if (params.page) searchParams.append("page", params.page.toString());
       if (params.limit) searchParams.append("limit", params.limit.toString());
-      if (params.search) searchParams.append("search", params.search);
+      if (params.search && params.search.trim()) searchParams.append("search", params.search);
       if (params.minPrice)
         searchParams.append("minPrice", params.minPrice.toString());
       if (params.maxPrice)
@@ -222,7 +222,8 @@ class ApiService {
       if (params.type) searchParams.append("type", params.type);
       if (params.lat) searchParams.append("lat", params.lat.toString());
       if (params.lng) searchParams.append("lng", params.lng.toString());
-      if (params.radius) searchParams.append("radius", params.radius.toString());
+      if (params.radius)
+        searchParams.append("radius", params.radius.toString());
     }
 
     const endpoint = `/units${

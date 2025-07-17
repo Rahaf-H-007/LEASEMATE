@@ -8,17 +8,31 @@ const deleteFromCloudinary = require("../utils/deleteFromCloudinary");
 const extractPublicId = require("../utils/extractPublicId");
 
 const getAllUnits = asyncWrapper(async (req, res) => {
-  const { search, type, minPrice, maxPrice, page = 1, limit = 10, lat, lng, radius = 50 } = req.query;
+  const {
+    search,
+    type,
+    minPrice,
+    maxPrice,
+    page = 1,
+    limit = 10,
+    lat,
+    lng,
+    radius = 50,
+  } = req.query;
 
   // Build filter object
   let filter = {};
 
-  if (search) {
+  if (search && search.trim()) {
+    // Escape special regex characters to prevent regex errors
+    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
     filter.$or = [
-      { name: { $regex: search, $options: "i" } },
-      { description: { $regex: search, $options: "i" } },
-      { address: { $regex: search, $options: "i" } },
-      { city: { $regex: search, $options: "i" } },
+      { name: { $regex: escapedSearch, $options: "i" } },
+      { description: { $regex: escapedSearch, $options: "i" } },
+      { address: { $regex: escapedSearch, $options: "i" } },
+      { city: { $regex: escapedSearch, $options: "i" } },
+      { governorate: { $regex: escapedSearch, $options: "i" } },
     ];
   }
 
@@ -34,16 +48,17 @@ const getAllUnits = asyncWrapper(async (req, res) => {
 
   // Location-based filtering with fallback logic
   let locationQuery = null;
-  if (lat && lng) {
+  if (lat && lng && (!search || search.trim() === "")) {
+    // Only apply location filter if no search term
     // Convert radius from meters to radians (Earth radius ≈ 6378100 meters)
     const radiusInRadians = Number(radius) / 6378100;
-    
+
     locationQuery = {
       location: {
         $geoWithin: {
-          $centerSphere: [[Number(lng), Number(lat)], radiusInRadians]
-        }
-      }
+          $centerSphere: [[Number(lng), Number(lat)], radiusInRadians],
+        },
+      },
     };
   }
 
@@ -53,29 +68,27 @@ const getAllUnits = asyncWrapper(async (req, res) => {
   let units = [];
   let total = 0;
 
-  // Try location-based search first if coordinates provided
+  // Try location-based search first if coordinates provided and no search term
   if (locationQuery) {
     const locationFilter = { ...filter, ...locationQuery };
-    units = await Unit.find(locationFilter)
-      .limit(Number(limit))
-      .skip(skip);
+    units = await Unit.find(locationFilter).limit(Number(limit)).skip(skip);
     total = await Unit.countDocuments(locationFilter);
 
     // If no units found nearby, try governorate/city fallback
     if (units.length === 0) {
       console.log("No units found nearby, trying governorate/city fallback...");
-      
-      // Try to find units in the same governorate (you'd need a reverse geocoding service for this)
+
+      // Try to find units in the same governorate (need a reverse geocoding service for this)
       // For now, we'll search for units in major cities as fallback
       const fallbackFilter = {
         ...filter,
         $or: [
           { governorate: "القاهرة" },
           { governorate: "الجيزة" },
-          { governorate: "الإسكندرية" }
-        ]
+          { governorate: "الإسكندرية" },
+        ],
       };
-      
+
       units = await Unit.find(fallbackFilter)
         .limit(Number(limit))
         .skip(skip)
@@ -83,7 +96,7 @@ const getAllUnits = asyncWrapper(async (req, res) => {
       total = await Unit.countDocuments(fallbackFilter);
     }
   } else {
-    // Regular search without location
+    // Regular search without location or with search term (search takes precedence)
     units = await Unit.find(filter)
       .limit(Number(limit))
       .skip(skip)
