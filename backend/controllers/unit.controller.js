@@ -46,74 +46,71 @@ const getAllUnits = asyncWrapper(async (req, res) => {
     if (maxPrice) filter.pricePerMonth.$lte = Number(maxPrice);
   }
 
-  // Location-based filtering with fallback logic
-  let locationQuery = null;
-  if (lat && lng && (!search || search.trim() === "")) {
-    // Only apply location filter if no search term
-    // Convert radius from meters to radians (Earth radius ≈ 6378100 meters)
-    const radiusInRadians = Number(radius) / 6378100;
-
-    locationQuery = {
-      location: {
-        $geoWithin: {
-          $centerSphere: [[Number(lng), Number(lat)], radiusInRadians],
-        },
-      },
-    };
-  }
-
   // Calculate pagination
   const skip = (page - 1) * limit;
 
   let units = [];
   let total = 0;
 
-  // Try location-based search first if coordinates provided and no search term
-  if (locationQuery) {
-    const locationFilter = { ...filter, ...locationQuery };
-    units = await Unit.find(locationFilter)
-      .populate('ownerId', 'name email phone') // Populate owner details
-      .limit(Number(limit))
-      .skip(skip);
-    total = await Unit.countDocuments(locationFilter);
+  // If we have user location and no search term, sort by proximity (nearby first, then all others)
+  if (lat && lng && (!search || search.trim() === "")) {
+    // Get all units that match the filter (no location filtering)
+    const allUnits = await Unit.find(filter)
+      .populate("ownerId", "name email phone")
+      .sort({ createdAt: -1 });
 
-    // If no units found nearby, try governorate/city fallback
-    if (units.length === 0) {
-      // Try to find units in the same governorate (need a reverse geocoding service for this)
-      // For now, we'll search for units in major cities as fallback
-      const fallbackFilter = {
-        ...filter,
-        $or: [
-          { governorate: "القاهرة" },
-          { governorate: "الجيزة" },
-          { governorate: "الإسكندرية" },
-          { governorate: "Cairo" }, // English versions
-          { governorate: "Giza" },
-          { governorate: "Alexandria" },
-        ],
-      };
+    // Helper function to calculate distance between two points in meters
+    const calculateDistance = (lat1, lng1, lat2, lng2) => {
+      const R = 6371e3; // Earth's radius in meters
+      const φ1 = (lat1 * Math.PI) / 180;
+      const φ2 = (lat2 * Math.PI) / 180;
+      const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+      const Δλ = ((lng2 - lng1) * Math.PI) / 180;
 
-      units = await Unit.find(fallbackFilter)
-        .populate('ownerId', 'name email phone') // Populate owner details
-        .limit(Number(limit))
-        .skip(skip)
-        .sort({ createdAt: -1 });
-      total = await Unit.countDocuments(fallbackFilter);
-      
-      // If still no results, show all units
-      if (units.length === 0) {
-        units = await Unit.find(filter)
-          .populate('ownerId', 'name email phone')
-          .limit(Number(limit))
-          .skip(skip)
-          .sort({ createdAt: -1 });
-        total = await Unit.countDocuments(filter);
+      const a =
+        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+      return R * c;
+    };
+
+    // Separate units into nearby and far
+    const nearbyUnits = [];
+    const farUnits = [];
+    const radiusInMeters = Number(radius);
+
+    allUnits.forEach((unit) => {
+      if (unit.location && unit.location.coordinates) {
+        const [unitLng, unitLat] = unit.location.coordinates;
+        const distance = calculateDistance(
+          Number(lat),
+          Number(lng),
+          unitLat,
+          unitLng
+        );
+
+        if (distance <= radiusInMeters) {
+          nearbyUnits.push(unit);
+        } else {
+          farUnits.push(unit);
+        }
+      } else {
+        // Units without location go to far units
+        farUnits.push(unit);
       }
-    }
+    });
+
+    // Combine: nearby first, then far units
+    const sortedUnits = [...nearbyUnits, ...farUnits];
+
+    // Apply pagination to the combined sorted list
+    units = sortedUnits.slice(skip, skip + Number(limit));
+    total = sortedUnits.length;
   } else {
     // Regular search without location or with search term (search takes precedence)
     units = await Unit.find(filter)
-      .populate('ownerId', 'name email phone') // Populate owner details
+      .populate("ownerId", "name email phone") // Populate owner details
       .limit(Number(limit))
       .skip(skip)
       .sort({ createdAt: -1 });
@@ -135,7 +132,10 @@ const getAllUnits = asyncWrapper(async (req, res) => {
 });
 
 const getUnit = asyncWrapper(async (req, res, next) => {
-  const unit = await Unit.findById(req.params.id).populate('ownerId', 'name email phone');
+  const unit = await Unit.findById(req.params.id).populate(
+    "ownerId",
+    "name email phone"
+  );
   if (!unit) {
     const error = appError.create("Unit not found", 404, httpStatusText.FAIL);
     return next(error);
@@ -151,8 +151,7 @@ const addUnit = asyncWrapper(async (req, res, next) => {
   }
 
   if (!req.files || req.files.length === 0) {
-    // For testing, allow units without images
-    console.log("No images provided, creating unit without images for testing");
+    // Allow units without images
   }
 
   let uploadedImageUrls = [];
@@ -169,14 +168,7 @@ const addUnit = asyncWrapper(async (req, res, next) => {
     ownerId: req.user._id, // Set the owner ID from authenticated user
   });
 
-  console.log("=== ADD UNIT DEBUG ===");
-  console.log("Unit to be saved:", unit);
-  console.log("Owner ID:", req.user._id);
-  console.log("======================");
-
   await unit.save();
-
-  console.log("Unit saved successfully with ID:", unit._id);
 
   res.status(201).json({
     status: httpStatusText.SUCCESS,
@@ -262,55 +254,6 @@ const deleteUnitImage = asyncWrapper(async (req, res, next) => {
   });
 });
 
-// Test endpoint to check database
-const testDatabase = asyncWrapper(async (req, res) => {
-  console.log("=== DATABASE TEST ===");
-  
-  try {
-    const totalUnits = await Unit.countDocuments();
-    const allUnits = await Unit.find().limit(5).populate('ownerId', 'name email phone');
-    
-    console.log("Total units in database:", totalUnits);
-    console.log("Sample units with populated owner:", allUnits.map(u => ({ 
-      id: u._id, 
-      name: u.name, 
-      ownerId: u.ownerId,
-      governorate: u.governorate,
-      createdAt: u.createdAt 
-    })));
-    
-    // Find the specific unit you created
-    const yourUnit = await Unit.findOne({ name: "فيلا جامدة معلش" }).populate('ownerId', 'name email phone');
-    console.log("Your unit details:", yourUnit);
-    
-    // Also search for units by partial name match
-    const recentUnits = await Unit.find().sort({ createdAt: -1 }).limit(3).populate('ownerId', 'name email phone');
-    console.log("Most recent units:", recentUnits.map(u => ({ 
-      id: u._id, 
-      name: u.name, 
-      ownerId: u.ownerId,
-      governorate: u.governorate,
-      createdAt: u.createdAt 
-    })));
-    
-    res.json({
-      status: httpStatusText.SUCCESS,
-      data: {
-        totalUnits,
-        sampleUnits: allUnits,
-        yourUnit: yourUnit,
-        recentUnits: recentUnits
-      }
-    });
-  } catch (error) {
-    console.error("Database test error:", error);
-    res.status(500).json({
-      status: httpStatusText.ERROR,
-      message: error.message
-    });
-  }
-});
-
 module.exports = {
   getAllUnits,
   getUnit,
@@ -318,5 +261,4 @@ module.exports = {
   updateUnit,
   deleteUnit,
   deleteUnitImage,
-  testDatabase,
 };

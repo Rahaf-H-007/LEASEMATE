@@ -187,4 +187,5 @@ export default function UnitDetailPage() {
     </div>
   );
 }
+//TODO: display owner contact details
 //TODO: (optional, later) improve layout

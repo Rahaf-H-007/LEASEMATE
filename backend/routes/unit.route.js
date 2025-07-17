@@ -27,7 +27,4 @@ router
 
 router.delete("/:id/image", protect, checkRole("landlord"), deleteUnitImage);
 
-// Test route for debugging
-router.get("/test/database", testDatabase);
-
 module.exports = router;

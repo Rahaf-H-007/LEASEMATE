@@ -60,7 +60,6 @@ export default function UnitsPage() {
 
         // Save location to sessionStorage for persistence across navigation
         sessionStorage.setItem("userLocation", JSON.stringify(location));
-        console.log("User location detected:", location);
       },
       (error) => {
         let errorMessage = "Unable to retrieve your location.";
@@ -78,7 +77,6 @@ export default function UnitsPage() {
         setLocationError(errorMessage);
         setLocationLoading(false);
         setIsLocationInitialized(true);
-        console.error("Geolocation error:", error);
       },
       {
         enableHighAccuracy: true,
@@ -97,9 +95,7 @@ export default function UnitsPage() {
         const location = JSON.parse(savedLocation);
         setUserLocation(location);
         setIsLocationInitialized(true);
-        console.log("Restored user location from session:", location);
-      } catch (error) {
-        console.error("Error parsing saved location:", error);
+      } catch {
         getUserLocation();
       }
     } else {
@@ -112,7 +108,6 @@ export default function UnitsPage() {
     const fetchData = async () => {
       // Don't fetch until location is initialized (either found or failed)
       if (!isLocationInitialized) {
-        console.log("Location not initialized yet, waiting...");
         return;
       }
 
@@ -151,14 +146,9 @@ export default function UnitsPage() {
           apiParams.lat = userLocation.lat;
           apiParams.lng = userLocation.lng;
           apiParams.radius = 10000; // 10km radius in meters
-          console.log("Using location-based search:", userLocation);
         }
 
-        console.log("API Params being sent:", apiParams);
-
         const response = await apiService.getUnits(undefined, apiParams);
-
-        console.log("API Response:", response); // Debug log
 
         // Extract units and pagination from response
         const unitsArray = response.data.units || [];
@@ -169,7 +159,6 @@ export default function UnitsPage() {
         setTotalUnits(pagination?.totalUnits || unitsArray.length);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to fetch units");
-        console.error("Error fetching units:", err);
       } finally {
         setLoading(false);
       }
@@ -254,7 +243,7 @@ export default function UnitsPage() {
                         clipRule="evenodd"
                       />
                     </svg>
-                    يتم عرض الوحدات القريبة من موقعك
+                    يتم عرض الوحدات القريبة أولاً، ثم باقي الوحدات
                   </div>
                 )}
                 {locationError && !locationLoading && (
@@ -376,4 +365,3 @@ export default function UnitsPage() {
     </div>
   );
 }
-//TODO: check why this doesnt show created units
