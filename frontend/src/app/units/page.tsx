@@ -19,6 +19,15 @@ export default function UnitsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalUnits, setTotalUnits] = useState(0);
 
+  // Location state
+  const [userLocation, setUserLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [isLocationInitialized, setIsLocationInitialized] = useState(false);
+
   // Controlled state for search and filters
   const [search, setSearch] = useState(params.get("search") || "");
   const [filters, setFilters] = useState({
@@ -31,9 +40,82 @@ export default function UnitsPage() {
 
   const currentPage = Number(params.get("page")) || 1;
 
+  // Get user location function
+  const getUserLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by this browser.");
+      return;
+    }
+
+    setLocationLoading(true);
+    setLocationError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const location = { lat: latitude, lng: longitude };
+        setUserLocation(location);
+        setLocationLoading(false);
+        setIsLocationInitialized(true);
+
+        // Save location to sessionStorage for persistence across navigation
+        sessionStorage.setItem("userLocation", JSON.stringify(location));
+        console.log("User location detected:", location);
+      },
+      (error) => {
+        let errorMessage = "Unable to retrieve your location.";
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Location access denied by user.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information is unavailable.";
+            break;
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out.";
+            break;
+        }
+        setLocationError(errorMessage);
+        setLocationLoading(false);
+        setIsLocationInitialized(true);
+        console.error("Geolocation error:", error);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000, // 5 minutes
+      }
+    );
+  };
+
+  // Get user location on component mount
+  useEffect(() => {
+    // Check if we already have location in sessionStorage (for persistence across navigation)
+    const savedLocation = sessionStorage.getItem("userLocation");
+    if (savedLocation) {
+      try {
+        const location = JSON.parse(savedLocation);
+        setUserLocation(location);
+        setIsLocationInitialized(true);
+        console.log("Restored user location from session:", location);
+      } catch (error) {
+        console.error("Error parsing saved location:", error);
+        getUserLocation();
+      }
+    } else {
+      getUserLocation();
+    }
+  }, []);
+
   // Fetch units on component mount and when dependencies change
   useEffect(() => {
     const fetchData = async () => {
+      // Don't fetch until location is initialized (either found or failed)
+      if (!isLocationInitialized) {
+        console.log("Location not initialized yet, waiting...");
+        return;
+      }
+
       try {
         setLoading(true);
         setError(null);
@@ -46,42 +128,60 @@ export default function UnitsPage() {
           minPrice?: number;
           maxPrice?: number;
           type?: string;
+          lat?: number;
+          lng?: number;
+          radius?: number;
         } = {
           page: currentPage,
           limit: 9, // Show 9 units per page to match the 3x3 grid
         };
 
         if (search) apiParams.search = search;
-        
+
         // Map filters to API parameters
         if (filters.price) {
           // Use the price as a maximum price filter
           apiParams.maxPrice = Number(filters.price);
         }
-        
+
         if (filters.type) apiParams.type = filters.type;
 
+        // Add location parameters if user location is available
+        if (userLocation) {
+          apiParams.lat = userLocation.lat;
+          apiParams.lng = userLocation.lng;
+          apiParams.radius = 10000; // 10km radius in meters
+          console.log("Using location-based search:", userLocation);
+        }
+
         const response = await apiService.getUnits(undefined, apiParams);
-        
-        console.log('API Response:', response); // Debug log
-        
+
+        console.log("API Response:", response); // Debug log
+
         // Extract units and pagination from response
         const unitsArray = response.data.units || [];
         const pagination = response.data.pagination;
-        
+
         setUnits(unitsArray);
         setTotalPages(pagination?.totalPages || 1);
         setTotalUnits(pagination?.totalUnits || unitsArray.length);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch units');
-        console.error('Error fetching units:', err);
+        setError(err instanceof Error ? err.message : "Failed to fetch units");
+        console.error("Error fetching units:", err);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [currentPage, search, filters.price, filters.type]);
+  }, [
+    currentPage,
+    search,
+    filters.price,
+    filters.type,
+    userLocation,
+    isLocationInitialized,
+  ]);
 
   // Update query params helper
   const updateQuery = (
@@ -130,13 +230,67 @@ export default function UnitsPage() {
             <FilterSidebar values={filters} onSubmit={handleFilterSubmit} />
           </aside>
           <section className="col-span-12 md:col-span-9 p-4 md:p-8">
+            {/* Location Status */}
+            <div className="mb-4 p-3 rounded-lg bg-white shadow-sm border">
+              {locationLoading && (
+                <div className="flex items-center text-blue-600">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                  جاري تحديد موقعك...
+                </div>
+              )}
+              {userLocation && !locationLoading && (
+                <div className="flex items-center text-green-600">
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  يتم عرض الوحدات القريبة من موقعك
+                </div>
+              )}
+              {locationError && !locationLoading && (
+                <div className="flex items-center text-amber-600">
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  لم يتم تحديد الموقع - يتم عرض جميع الوحدات
+                  <button
+                    onClick={() => {
+                      // Clear saved location and try again
+                      sessionStorage.removeItem("userLocation");
+                      setUserLocation(null);
+                      setIsLocationInitialized(false);
+                      getUserLocation();
+                    }}
+                    className="mr-2 text-blue-600 hover:text-blue-800 underline"
+                  >
+                    إعادة المحاولة
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div className="mb-6">
               <SearchBar value={search} onChange={handleSearchChange} />
             </div>
             <h2 className="text-[var(--dark-brown)] text-3xl font-bold leading-tight tracking-tight mb-6 text-right">
-              {loading ? 'جاري التحميل...' : `عرض ${totalUnits} وحدات`}
+              {loading ? "جاري التحميل..." : `عرض ${totalUnits} وحدات`}
             </h2>
-            
+
             {/* Loading State */}
             {loading && (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -183,17 +337,21 @@ export default function UnitsPage() {
                       <UnitCard
                         key={unit._id}
                         id={unit._id}
-                        title={unit.name || 'اسم غير متوفر'}
+                        title={unit.name || "اسم غير متوفر"}
                         price={unit.pricePerMonth || 0}
                         size={unit.space || 0}
-                        imageUrl={unit.images && unit.images.length > 0 ? unit.images[0] : '/placeholder-image.jpg'}
-                        available={unit.status === 'available'}
+                        imageUrl={
+                          unit.images && unit.images.length > 0
+                            ? unit.images[0]
+                            : "/placeholder-image.jpg"
+                        }
+                        available={unit.status === "available"}
                         isVerified={true} // You might want to add a verification field to the Unit interface
                       />
                     ))}
                   </div>
                 )}
-                
+
                 {/* Pagination - only show if there are units and multiple pages */}
                 {units.length > 0 && totalPages > 1 && (
                   <PaginationControls

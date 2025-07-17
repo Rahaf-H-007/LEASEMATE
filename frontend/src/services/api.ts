@@ -34,18 +34,18 @@ export interface AuthResponse {
 
 export interface Unit {
   _id: string;
-  name: string; // Backend uses 'name' instead of 'title'
+  name: string;
   description: string;
-  pricePerMonth: number; // Backend uses 'pricePerMonth' instead of 'price'
+  pricePerMonth: number;
   address: string;
   city: string;
   governorate: string;
   postalCode?: number;
-  numRooms: number; // Backend uses 'numRooms' instead of 'bedrooms'
-  space: number; // Backend uses 'space' instead of 'area'
-  type: "villa" | "apartment"; // Backend enum is different
+  numRooms: number;
+  space: number;
+  type: "villa" | "apartment";
   images: string[];
-  ownerId: string; // Backend uses 'ownerId' instead of nested landlord object
+  ownerId: string;
   isFurnished: boolean;
   hasPool: boolean;
   hasAC: boolean;
@@ -53,7 +53,7 @@ export interface Unit {
   hasWifi: boolean;
   hasKitchenware: boolean;
   hasHeating: boolean;
-  status: "available" | "booked" | "under maintenance"; // Backend uses 'status' instead of 'available'
+  status: "available" | "booked" | "under maintenance";
   createdAt?: string;
   updatedAt?: string;
 }
@@ -204,6 +204,9 @@ class ApiService {
       minPrice?: number;
       maxPrice?: number;
       type?: string;
+      lat?: number;
+      lng?: number;
+      radius?: number;
     }
   ): Promise<UnitsResponse> {
     const searchParams = new URLSearchParams();
@@ -217,6 +220,9 @@ class ApiService {
       if (params.maxPrice)
         searchParams.append("maxPrice", params.maxPrice.toString());
       if (params.type) searchParams.append("type", params.type);
+      if (params.lat) searchParams.append("lat", params.lat.toString());
+      if (params.lng) searchParams.append("lng", params.lng.toString());
+      if (params.radius) searchParams.append("radius", params.radius.toString());
     }
 
     const endpoint = `/units${
