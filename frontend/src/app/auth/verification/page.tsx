@@ -189,7 +189,7 @@ export default function VerificationPage() {
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-8">
             <div className="text-center mb-8">
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                {step === 1 ? 'تحميل وثائق الهوية' : 'تحميل صورة شخصية بالكاميرا الأمامية'}
+                {step === 1 ? 'تحميل وثائق الهوية' : 'تحميل صورة شخصية بالكاميرا الأمامية وانت تحمل البطاقة الشخصية'}
               </h3>
               <p className="text-gray-600 dark:text-gray-300">
                 {step === 1 
@@ -326,7 +326,7 @@ export default function VerificationPage() {
                         ? 'text-green-700 dark:text-green-300' 
                         : 'text-gray-900 dark:text-white'
                     }`}>
-                      {selfieFile ? 'تم تحميل الصورة الشخصية ✓' : 'تحميل صورة شخصية بالكاميرا الأمامية'}
+                      {selfieFile ? 'تم تحميل الصورة الشخصية ✓' : ' تحميل صورة شخصية بالكاميرا الأمامية وانت تحمل البطاقة الشخصية'}
                     </span>
                     <span className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                       قم بالسحب والإفلات لتحميل الصورة
