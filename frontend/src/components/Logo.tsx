@@ -1,5 +1,5 @@
-import React from 'react';
-import Link from 'next/link';
+import React from "react";
+import Link from "next/link";
 
 interface LogoProps {
   size?: number;
@@ -16,4 +16,4 @@ export default function Logo({ size = 90 }: LogoProps) {
       />
     </Link>
   );
-} 
+}
