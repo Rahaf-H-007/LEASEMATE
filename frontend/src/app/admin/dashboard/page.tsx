@@ -40,8 +40,8 @@ export default function AdminDashboard() {
   const [showModal, setShowModal] = useState(false);
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const usersPerPage = 10; // Number of users per page
-  // Tab state: 'table' or 'dashboard'
+  const usersPerPage = 6; // Number of users per page
+ 
   const [activeTab, setActiveTab] = useState<'table' | 'dashboard'>('table');
 
   // Check admin access
