@@ -5,11 +5,11 @@ interface LogoProps {
   size?: number;
 }
 
-export default function Logo({ size = 90 }: LogoProps) {
+export default function Logo({ size = 150 }: LogoProps) {
   return (
     <Link href="/" className="inline-block cursor-pointer">
       <img
-        src="/leasemate-logo.png"
+        src="/logo.png"
         alt="LeaseMate Logo"
         style={{ width: size, height: size }}
         className="object-contain"
