@@ -336,12 +336,12 @@ export default function Home() {
           {/* شعار واسم المنصة */}
           <div className="flex items-center gap-3 mb-6 md:mb-0">
             <Image
-              src="/leasemate-logo.png"
+              src="/logo.png"
               alt="LeaseMate Logo"
-              width={50}
-              height={50}
+              width={80}
+              height={80}
             />
-            <span className="font-bold text-2xl tracking-wide">LeaseMate</span>
+           
           </div>
           {/* روابط سريعة */}
           <ul className="flex gap-8 text-lg font-medium mb-6 md:mb-0">
