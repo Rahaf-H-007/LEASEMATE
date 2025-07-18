@@ -2,14 +2,14 @@ const API_BASE_URL = 'http://localhost:5000/api';
 
 export interface RegisterData {
   name: string;
-  email?: string;
+  username?: string;
   phone?: string;
   password: string;
   role: 'landlord' | 'tenant';
 }
 
 export interface LoginData {
-  emailOrPhone: string;
+  usernameOrPhone: string;
   password: string;
 }
 
