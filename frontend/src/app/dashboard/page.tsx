@@ -1,13 +1,16 @@
 'use client';
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import VerificationCheck from '@/components/VerificationCheck';
 import Navbar from '@/components/Navbar';
-// تم حذف useLanguage
+
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const [showVerificationStatus, setShowVerificationStatus] = useState(true);
 
   return (
     <ProtectedRoute>
@@ -15,7 +18,7 @@ export default function Dashboard() {
         <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
           <Navbar />
         
-        <main className="pt-14 px-4"> {/* pt-14 matches new Navbar height */}
+        <main className="pt-14 px-4"> 
           <div className="max-w-7xl mx-auto">
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
@@ -27,15 +30,25 @@ export default function Dashboard() {
             </div>
 
             {/* Verification Status */}
-            {user?.verificationStatus && (
+            {user?.verificationStatus && showVerificationStatus && (
               <div className="mb-6">
-                <div className={`rounded-xl p-4 shadow-lg ${
+                <div className={`rounded-xl p-4 shadow-lg relative ${
                   user.verificationStatus.status === 'approved' 
                     ? 'bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700'
                     : user.verificationStatus.status === 'rejected'
                     ? 'bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700'
                     : 'bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700'
                 }`}>
+                  {/* Close Button */}
+                  <button
+                    onClick={() => setShowVerificationStatus(false)}
+                    className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  
                   <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                       user.verificationStatus.status === 'approved'
@@ -101,38 +114,19 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Recent Activity */}
-              <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 shadow-lg">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">آخر الأنشطة</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 bg-orange-500 dark:bg-orange-400 rounded-full"></div>
-                    <span className="text-sm text-gray-600 dark:text-gray-300">تم استلام دفعة إيجار</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 bg-green-500 dark:bg-green-400 rounded-full"></div>
-                    <span className="text-sm text-gray-600 dark:text-gray-300">تم حل طلب صيانة</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 bg-yellow-500 dark:bg-yellow-400 rounded-full"></div>
-                    <span className="text-sm text-gray-600 dark:text-gray-300">تجديد عقد</span>
-                  </div>
-                </div>
-              </div>
+             
 
               {/* Quick Actions */}
               <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 shadow-lg">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">إجراءات سريعة</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 text-center">إجراءات سريعة</h3>
                 <div className="space-y-3">
-                  <button className="w-full text-left p-3 rounded-lg bg-orange-500 dark:bg-orange-600 text-white font-medium hover:bg-orange-600 dark:hover:bg-orange-700 transition-colors">
-                    {user?.role === 'landlord' ? 'إضافة عقار' : 'إرسال طلب'}
+                  <button className="w-full text-center p-3 rounded-lg bg-orange-500 dark:bg-orange-600 text-white font-medium hover:bg-orange-600 dark:hover:bg-orange-700 transition-colors">
+                    {user?.role === 'landlord' ? 'إضافة عقار' : ' ارسال طلب صيانة'}
                   </button>
-                  <button className="w-full text-left p-3 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                  <button className="w-full text-center p-3 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
                     عرض المستندات
                   </button>
-                  <button className="w-full text-left p-3 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                    تواصل مع الدعم
-                  </button>
+                 
                 </div>
               </div>
             </div>
