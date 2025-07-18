@@ -10,7 +10,7 @@ import Navbar from '@/components/Navbar';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
-    emailOrPhone: '',
+    usernameOrPhone: '',
     password: '',
   });
   const [error, setError] = useState('');
@@ -114,13 +114,13 @@ export default function LoginPage() {
           <h2 className="text-2xl font-bold mb-6 text-center text-gray-900 dark:text-white">تسجيل الدخول</h2>
           {error && <div className="mb-4 text-red-600 text-center">{error}</div>}
           <div className="mb-4">
-            <label htmlFor="emailOrPhone" className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">البريد الإلكتروني أو رقم الهاتف</label>
+            <label htmlFor="usernameOrPhone" className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">اسم المستخدم أو رقم الهاتف</label>
             <input
               type="text"
-              id="emailOrPhone"
-              name="emailOrPhone"
-              value={formData.emailOrPhone}
-              onChange={e => setFormData({ ...formData, emailOrPhone: e.target.value })}
+              id="usernameOrPhone"
+              name="usernameOrPhone"
+              value={formData.usernameOrPhone}
+              onChange={e => setFormData({ ...formData, usernameOrPhone: e.target.value })}
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
               required
             />
