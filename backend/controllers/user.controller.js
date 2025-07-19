@@ -1,15 +1,15 @@
 const User = require("../models/user.model");
 const generateToken = require("../utils/generateToken");
-const uploadToCloudinary = require("../utils/uploadToCloudinary");
+const uploadToCloudinary = require("../utils/uploadtoCloudinary");
 
 // Register
 const register = async (req, res) => {
-  const { name, email, phone, password, role } = req.body;
-  const userExists = await User.findOne({ $or: [{ email }, { phone }] });
+  const { name, username, phone, password, role } = req.body;
+  const userExists = await User.findOne({ $or: [{ username }, { phone }] });
   if (userExists)
     return res.status(400).json({ message: "User already exists" });
 
-  const user = await User.create({ name, email, phone, password, role });
+  const user = await User.create({ name, username, phone, password, role });
   res.status(201).json({
     _id: user._id,
     name: user.name,
@@ -20,9 +20,9 @@ const register = async (req, res) => {
 
 //  Login
 const login = async (req, res) => {
-  const { emailOrPhone, password } = req.body;
+  const { usernameOrPhone, password } = req.body;
   const user = await User.findOne({
-    $or: [{ email: emailOrPhone }, { phone: emailOrPhone }],
+    $or: [{ username: usernameOrPhone }, { phone: usernameOrPhone }],
   });
 
   if (user && (await user.matchPassword(password))) {
@@ -49,7 +49,7 @@ const updateProfile = async (req, res) => {
   const user = await User.findById(req.user._id);
   if (user) {
     user.name = req.body.name || user.name;
-    user.email = req.body.email || user.email;
+    user.username = req.body.username || user.username;
     user.phone = req.body.phone || user.phone;
     if (req.body.password) user.password = req.body.password;
     await user.save();

@@ -40,8 +40,8 @@ export default function AdminDashboard() {
   const [showModal, setShowModal] = useState(false);
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const usersPerPage = 5; // Number of users per page
-  // Tab state: 'table' or 'dashboard'
+  const usersPerPage = 6; // Number of users per page
+ 
   const [activeTab, setActiveTab] = useState<'table' | 'dashboard'>('table');
 
   // Check admin access
@@ -94,8 +94,10 @@ export default function AdminDashboard() {
   // Calculate pagination
   const indexOfLastUser = currentPage * usersPerPage;
   const indexOfFirstUser = indexOfLastUser - usersPerPage;
-  const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
-  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+  // استبعاد الأدمن من الظهور في الجدول
+  const filteredNonAdminUsers = filteredUsers.filter(user => user.role !== 'admin');
+  const currentUsers = filteredNonAdminUsers.slice(indexOfFirstUser, indexOfLastUser);
+  const totalPages = Math.ceil(filteredNonAdminUsers.length / usersPerPage);
 
   // Stats for dashboard
   const pendingCount = users.filter(u => u.verificationStatus?.status === 'pending').length;

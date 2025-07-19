@@ -3,9 +3,9 @@ const generateToken = require("../utils/generateToken");
 
 // Admin Login
 const adminLogin = async (req, res) => {
-  const { email, password } = req.body;
-  
-  const user = await User.findOne({ email, role: 'admin' });
+  const { username, password } = req.body;
+
+  const user = await User.findOne({ username, role: 'admin' });
 
   if (user && (await user.matchPassword(password))) {
     res.json({

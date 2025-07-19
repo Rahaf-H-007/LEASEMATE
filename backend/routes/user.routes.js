@@ -1,5 +1,11 @@
 const express = require("express");
-const userController = require('../controllers/user.controller');
+const {
+  register,
+  login,
+  getProfile,
+  updateProfile,
+  uploadAvatar,uploadVerification
+} = require("../controllers/user.controller");
 const { protect } = require("../middlewares/auth.middleware");
 const upload = require("../middlewares/upload.middleware");
 

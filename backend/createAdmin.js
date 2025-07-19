@@ -4,11 +4,11 @@ require('dotenv').config();
 
 const createAdmin = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
-    
-    // Check if admin already exists
-    const existingAdmin = await User.findOne({ email: 'admin@leasemate.com' });
-    
+    await mongoose.connect(process.env.MONGO_URI);
+
+    // Check if admin already exists (by username)
+    const existingAdmin = await User.findOne({ username: 'admin' });
+
     if (existingAdmin) {
       console.log('Admin user already exists');
       process.exit(0);
@@ -17,7 +17,7 @@ const createAdmin = async () => {
     // Create admin user
     const adminUser = new User({
       name: 'Admin',
-      email: 'admin@leasemate.com',
+      username: 'admin', // Use username instead of email
       password: 'admin123', // This will be hashed by the pre-save hook
       role: 'admin',
       verificationStatus: {
@@ -29,9 +29,9 @@ const createAdmin = async () => {
 
     await adminUser.save();
     console.log('Admin user created successfully');
-    console.log('Email: admin@leasemate.com');
+    console.log('Username: admin');
     console.log('Password: admin123');
-    
+
   } catch (error) {
     console.error('Error creating admin:', error);
   } finally {

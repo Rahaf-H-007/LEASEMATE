@@ -10,7 +10,7 @@ import Logo from '@/components/Logo';
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
     name: '',
-    email: '',
+    username: '',
     phone: '',
     password: '',
     confirmPassword: '',
@@ -30,8 +30,8 @@ export default function RegisterPage() {
       return;
     }
 
-    if (!formData.email && !formData.phone) {
-      setError('يرجى إدخال البريد الإلكتروني أو رقم الهاتف');
+    if (!formData.username && !formData.phone) {
+      setError('يرجى إدخال الاسم المستعار أو رقم الهاتف');
       return;
     }
 
@@ -42,12 +42,12 @@ export default function RegisterPage() {
         name: formData.name,
         password: formData.password,
         role: formData.role,
-        ...(formData.email && { email: formData.email }),
+        ...(formData.username && { username: formData.username }),
         ...(formData.phone && { phone: formData.phone }),
       };
 
       const response = await apiService.register(registerData);
-      login(response.token);
+      login(response.token,response);
       router.push('/auth/verification');
     } catch (err: unknown) {
       const error = err as Error;
@@ -107,12 +107,12 @@ export default function RegisterPage() {
           />
         </div>
         <div className="mb-4">
-          <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">البريد الإلكتروني</label>
+          <label htmlFor="username" className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">اسم المستخدم </label>
           <input
-            type="email"
-            id="email"
-            name="email"
-            value={formData.email}
+            type="text"
+            id="username"
+              name="username"
+            value={formData.username}
             onChange={handleChange}
             className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
           />

@@ -1,29 +1,36 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const leaseSchema = new mongoose.Schema({
-  landlordId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-  },
   tenantId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
+    ref: "User",
+    required: true
+  },
+  landlordId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true
   },
   unitId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Unit',
-    required: false,
+    ref: "Units",
+    required: true
   },
+  rentAmount: Number,
+  depositAmount: Number,
   startDate: Date,
   endDate: Date,
-  rentAmount: Number,
+  paymentTerms: String,
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  leasePDF: String, // URL or file path to generated PDF
   status: {
     type: String,
-    enum: ['active', 'expired', 'pending'],
-    default: 'active'
+    enum: ["active", "terminated"],
+    default: "active"
   }
 });
 
-module.exports = mongoose.model('Lease', leaseSchema);
+module.exports = mongoose.model("Lease", leaseSchema);

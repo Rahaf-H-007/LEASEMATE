@@ -15,9 +15,12 @@ const socketIo = require('socket.io');
 const { setupSocket } = require('./socket');
 const { startLeaseExpiryJob } = require('./utils/leaseExpiryJob');
 const reviewRoutes = require("./routes/review.route");
+const leaseRoutes = require("./routes/lease.routes");
+const unitRoutes = require('./routes/unit.routes');
 
 const app = express();
 const server = http.createServer(app);
+
 
 const io = socketIo(server, {
   cors: {
@@ -47,8 +50,9 @@ app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/units', unitRouter);
-app.use('/api/dev', testLeaseRoutes);
+app.use('/api/units', unitRoutes);
+app.use("/api/leases", leaseRoutes);
+app.use("/api/booking", require('./routes/booking.routes'));
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use("/api/reviews", reviewRoutes);
