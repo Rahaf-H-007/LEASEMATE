@@ -191,7 +191,7 @@ export default function Home() {
                           ابدأ الآن
                         </button>
                       </Link>
-                      <Link href="/properties">
+                      <Link href="/unit">
                         <button className="bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-4 py-4 rounded-lg font-semibold text-lg border-2 border-gray-300 dark:border-gray-700 hover:border-orange-500 dark:hover:border-orange-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors shadow-lg">
                           تصفح العقارات
                         </button>
@@ -352,7 +352,7 @@ export default function Home() {
             </li>
             <li>
               <Link
-                href="/properties"
+                href="/unit"
                 className="hover:text-orange-400 transition"
               >
                 العقارات
