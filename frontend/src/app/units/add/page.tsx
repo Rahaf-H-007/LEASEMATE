@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import toast, { Toaster } from "react-hot-toast";
 import UnitForm from "@/components/UnitForm";
 import AmenitiesForm from "@/components/AmenitiesForm";
 import { apiService } from "@/services/api";
@@ -37,7 +39,8 @@ interface ValidationErrors {
 
 export default function AddUnitPage() {
   const { user, token } = useAuth();
-  
+  const router = useRouter();
+
   const [unitData, setUnitData] = useState<UnitData>({
     name: "",
     type: "",
@@ -122,9 +125,9 @@ export default function AddUnitPage() {
     }
 
     // Image validation (temporarily disabled for testing)
-    // if (unitData.images.length === 0) {
-    //   newErrors.images = "يجب رفع صورة واحدة على الأقل للوحدة";
-    // }
+    if (unitData.images.length === 0) {
+      newErrors.images = "يجب رفع صورة واحدة على الأقل للوحدة";
+    }
 
     // Furnished status validation
     if (!unitData.isFurnishedSelected) {
@@ -142,7 +145,10 @@ export default function AddUnitPage() {
     }
 
     if (!user || !token) {
-      alert("يجب تسجيل الدخول أولاً");
+      toast.error("يجب تسجيل الدخول أولاً", {
+        duration: 3000,
+        position: "top-center",
+      });
       return;
     }
 
@@ -151,7 +157,7 @@ export default function AddUnitPage() {
     try {
       // Create FormData for multipart form submission
       const formData = new FormData();
-      
+
       // Add unit data fields
       formData.append("name", unitData.name);
       formData.append("type", unitData.type);
@@ -163,12 +169,12 @@ export default function AddUnitPage() {
       formData.append("city", unitData.city);
       formData.append("governorate", unitData.governorate);
       formData.append("isFurnished", unitData.isFurnished.toString());
-      
+
       // Add postal code if provided
       if (unitData.postalCode) {
         formData.append("postalCode", unitData.postalCode);
       }
-      
+
       // Add amenities
       formData.append("hasPool", amenities.hasPool.toString());
       formData.append("hasAC", amenities.hasAC.toString());
@@ -176,19 +182,32 @@ export default function AddUnitPage() {
       formData.append("hasWifi", amenities.hasWifi.toString());
       formData.append("hasKitchenware", amenities.hasKitchenware.toString());
       formData.append("hasHeating", amenities.hasHeating.toString());
-      
+
       // Add images
       unitData.images.forEach((image) => {
         formData.append("images", image);
       });
 
-      
-
       // Call API to create unit
       const createdUnit = await apiService.createUnit(formData, token);
 
       console.log("Unit created successfully:", createdUnit);
-      alert("تم حفظ بيانات الوحدة بنجاح!");
+
+      // Show success toast
+      toast.success(
+        "تم حفظ بيانات الوحدة بنجاح! سيتم توجيهك إلى الصفحة الرئيسية",
+        {
+          duration: 3000,
+          position: "top-center",
+          style: {
+            background: "#10B981",
+            color: "#fff",
+            fontWeight: "bold",
+            padding: "16px",
+            borderRadius: "8px",
+          },
+        }
+      );
 
       // Reset form after successful submission
       setUnitData({
@@ -216,14 +235,40 @@ export default function AddUnitPage() {
       });
       setErrors({});
 
-      // Optionally redirect to units list or unit details
-      // router.push(`/units/${createdUnit._id}`);
+      // Redirect to home page after a short delay
+      setTimeout(() => {
+        router.push("/");
+      }, 2000);
+
     } catch (error) {
       console.error("Error saving unit:", error);
       if (error instanceof Error) {
-        alert(`حدث خطأ أثناء حفظ بيانات الوحدة: ${error.message}`);
+        toast.error(`حدث خطأ أثناء حفظ بيانات الوحدة: ${error.message}`, {
+          duration: 4000,
+          position: "top-center",
+          style: {
+            background: "#EF4444",
+            color: "#fff",
+            fontWeight: "bold",
+            padding: "16px",
+            borderRadius: "8px",
+          },
+        });
       } else {
-        alert("حدث خطأ أثناء حفظ بيانات الوحدة. يرجى المحاولة مرة أخرى.");
+        toast.error(
+          "حدث خطأ أثناء حفظ بيانات الوحدة. يرجى المحاولة مرة أخرى.",
+          {
+            duration: 4000,
+            position: "top-center",
+            style: {
+              background: "#EF4444",
+              color: "#fff",
+              fontWeight: "bold",
+              padding: "16px",
+              borderRadius: "8px",
+            },
+          }
+        );
       }
     } finally {
       setIsSubmitting(false);
@@ -232,6 +277,7 @@ export default function AddUnitPage() {
 
   return (
     <main className="min-h-screen bg-gray-50 py-8">
+      <Toaster />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <header className="mb-10 text-center">
           <h1 className="text-4xl font-bold text-gray-900 mb-4 font-cairo">
