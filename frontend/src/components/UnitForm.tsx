@@ -3,6 +3,7 @@ interface UnitData {
   type: string;
   description: string;
   pricePerMonth: string;
+  securityDeposit: string;
   numRooms: string;
   space: string;
   address: string;
@@ -191,7 +192,7 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
       </div>
 
       {/* Property Details */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="space-y-3">
           <label
             className="block text-sm font-bold text-gray-700 font-cairo"
@@ -211,6 +212,29 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
             onChange={(e) => handleInputChange("pricePerMonth", e.target.value)}
           />
           <ErrorMessage error={errors.pricePerMonth} />
+        </div>
+
+        <div className="space-y-3">
+          <label
+            className="block text-sm font-bold text-gray-700 font-cairo"
+            htmlFor="securityDeposit"
+          >
+            مبلغ التأمين (جنيه) <span className="text-red-500">*</span>
+          </label>
+          <input
+            className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 font-cairo text-right bg-gray-50 focus:bg-white ${
+              errors.securityDeposit ? "border-red-500" : "border-gray-300"
+            }`}
+            id="securityDeposit"
+            placeholder="30000"
+            type="number"
+            min="1"
+            value={data.securityDeposit}
+            onChange={(e) =>
+              handleInputChange("securityDeposit", e.target.value)
+            }
+          />
+          <ErrorMessage error={errors.securityDeposit} />
         </div>
 
         <div className="space-y-3">

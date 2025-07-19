@@ -170,7 +170,9 @@ export default function UnitDetailPage() {
                     <RentSidebarCard
                       rent={unit.pricePerMonth}
                       leaseDuration="١٢ شهر"
-                      securityDeposit={unit.pricePerMonth}
+                      securityDeposit={
+                        unit.securityDeposit || unit.pricePerMonth
+                      }
                       availableFrom={
                         unit.status === "available" ? "متاح الآن" : "غير متاح"
                       }

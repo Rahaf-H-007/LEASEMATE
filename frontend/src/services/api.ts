@@ -37,6 +37,7 @@ export interface Unit {
   name: string;
   description: string;
   pricePerMonth: number;
+  securityDeposit?: number;
   address: string;
   city: string;
   governorate: string;

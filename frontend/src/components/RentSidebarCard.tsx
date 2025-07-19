@@ -18,6 +18,7 @@ interface RentSidebarCardProps {
 
 const RentSidebarCard: React.FC<RentSidebarCardProps> = ({
   rent,
+  securityDeposit,
   availableFrom,
   manager,
 }) => {
@@ -53,12 +54,14 @@ const RentSidebarCard: React.FC<RentSidebarCardProps> = ({
       </div>
 
       <div className="space-y-4 text-base mb-6">
-        {/* <div className="flex justify-between items-center py-2 border-b border-gray-100">
-          <p className="text-gray-600 font-medium">التأمين</p>
-          <p className="text-gray-800 font-semibold">
-            {securityDeposit.toLocaleString()} جنيه
-          </p>
-        </div> */}
+        {
+          <div className="flex justify-between items-center py-2 border-b border-gray-100">
+            <p className="text-gray-600 font-medium">التأمين</p>
+            <p className="text-gray-800 font-semibold">
+              {securityDeposit.toLocaleString()} جنيه
+            </p>
+          </div>
+        }
         <div className="flex justify-between items-center py-2 border-b border-gray-100">
           <p className="text-gray-600 font-medium">متاح من</p>
           <p className="text-green-600 font-semibold">{availableFrom}</p>

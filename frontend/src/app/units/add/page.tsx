@@ -13,6 +13,7 @@ interface UnitData {
   type: string;
   description: string;
   pricePerMonth: string;
+  securityDeposit: string;
   numRooms: string;
   space: string;
   address: string;
@@ -46,6 +47,7 @@ export default function AddUnitPage() {
     type: "",
     description: "",
     pricePerMonth: "",
+    securityDeposit: "",
     numRooms: "",
     space: "",
     address: "",
@@ -112,6 +114,9 @@ export default function AddUnitPage() {
     if (!unitData.pricePerMonth || Number(unitData.pricePerMonth) <= 0) {
       newErrors.pricePerMonth = "السعر الشهري مطلوب ويجب أن يكون أكبر من صفر";
     }
+    if (!unitData.securityDeposit || Number(unitData.securityDeposit) <= 0) {
+      newErrors.securityDeposit = "مبلغ التأمين مطلوب ويجب أن يكون أكبر من صفر";
+    }
     if (!unitData.numRooms || Number(unitData.numRooms) <= 0) {
       newErrors.numRooms = "عدد الغرف مطلوب ويجب أن يكون أكبر من صفر";
     }
@@ -163,6 +168,7 @@ export default function AddUnitPage() {
       formData.append("type", unitData.type);
       formData.append("description", unitData.description);
       formData.append("pricePerMonth", unitData.pricePerMonth);
+      formData.append("securityDeposit", unitData.securityDeposit);
       formData.append("numRooms", unitData.numRooms);
       formData.append("space", unitData.space);
       formData.append("address", unitData.address);
@@ -215,6 +221,7 @@ export default function AddUnitPage() {
         type: "",
         description: "",
         pricePerMonth: "",
+        securityDeposit: "",
         numRooms: "",
         space: "",
         address: "",
@@ -239,7 +246,6 @@ export default function AddUnitPage() {
       setTimeout(() => {
         router.push("/");
       }, 2000);
-
     } catch (error) {
       console.error("Error saving unit:", error);
       if (error instanceof Error) {
