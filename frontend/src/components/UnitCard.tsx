@@ -53,14 +53,18 @@ const UnitCard: React.FC<UnitCardProps> = ({
         {size} متر
       </p>
       <div className="flex justify-between items-center mb-4">
-        <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+        <span
+          className={`font-bold text-orange-600 dark:text-orange-400 whitespace-nowrap ${
+            price >= 10000 ? "text-[1.3rem]" : "text-2xl"
+          }`}
+        >
           {price.toLocaleString()} جنيه/شهر
         </span>
         <span
-          className={`px-3 py-1 rounded-full text-sm font-medium ${
+          className={`rounded-full text-sm font-medium whitespace-nowrap ${
             available
-              ? "bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100"
-              : "bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-100"
+              ? "bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100 px-3 py-1"
+              : "bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-100 px-4 py-1"
           }`}
         >
           {available ? "متوفر" : "غير متوفر"}
@@ -74,6 +78,5 @@ const UnitCard: React.FC<UnitCardProps> = ({
 );
 
 export default UnitCard;
-/*TODO: make unavailable ellipse bigger so the word is on one line
-TODO:(make a commented version that doesnt show unavailable pages,
+/*TODO:(make a commented version that doesnt show unavailable pages,
 TODO: check why its unavailable in the first place)*/
