@@ -1,45 +1,86 @@
-# LeaseMate
-An apartment rental website
+# Developer Guide – LeaseMate Repo
 
-**For The Developers**
----
-## Git Workflow Instructions
+## Clone the Repository
 
-### When a Pull Request is Merged to Main
-
-When someone make a pull request from their branch to the main branch and merged, all team members (including the PR author) need to update their branches to incorporate these changes.
-
-### For All Team Members (Including PR Authors)
-
-After a PR is merged to main, follow these steps:
+Open your terminal and run:
 
 ```bash
-# Switch to your main branch
-git checkout main
-
-# Pull the latest changes from remote main
-git pull origin main
-
-# Switch back to your feature branch
-git checkout your-branch
-
-# Merge changes from main into your branch
-git merge main
-
-# Resolve any conflicts if necessary
-
+git clone https://github.com/OlaRedaAbdulrazeq/LEASEMATE.git
+cd LEASEMATE
 ```
 
-### Before Pushing Your Changes
+## Switch to the Development Branch
 
-**IMPORTANT:** Always merge the latest changes from main before pushing your code:
+Make sure you’re working on the main development branch called `before-main`:
 
-### Best Practices
+```bash
+git checkout before-main
+git pull origin before-main
+```
 
-1. Update your branch regularly to avoid large, difficult merges
-2. Always merge from main before pushing your changes
-3. Communicate with your team when you're making significant changes
-4. Make sure to pull main before creating new branches to start from the latest code
+## Install Dependencies
 
+### For Frontend
 
-**NOTE:** This README, and only this version of it, is based on [this one](https://github.com/AhmedBedeir/car-rental-system/tree/deploy).
+```bash
+cd frontend
+npm install
+```
+
+### For Backend
+
+```bash
+cd ../backend
+npm install
+```
+
+## Create Your Own Feature Branch
+
+Create a new branch for your feature or task, based off `before-main`. Use a clear, descriptive name:
+
+```bash
+git checkout -b feature/your-branch-name
+```
+
+> مثال لاسم البرانش:
+>
+> `feature/add-login-page`
+
+## Make Your Changes
+
+Edit or add files as needed in your feature branch.
+
+## Stage, Commit, and Push Your Changes
+
+It’s recommended to add each file separately for better traceability and easier debugging if an issue arises.
+
+```bash
+git add path/to/your/file
+git commit -m "وصف مختصر للتغييرات اللي عملتها"
+git push origin feature/your-branch-name
+```
+
+> مثال:
+>
+> ```bash
+> git add frontend/src/components/LoginForm.jsx
+> git commit -m "add login form component"
+> git push origin feature/add-login-page
+> ```
+
+## Create a Pull Request (PR)
+
+1. Go to the [GitHub repository](https://github.com/OlaRedaAbdulrazeq/LEASEMATE).
+2. You’ll see a prompt to open a PR for your pushed branch.
+3. Open a PR targeting the `before-main` branch.
+4. Add a clear title and description of your changes.
+5. Request reviewers if needed.
+
+## After PR Approval
+
+Once your PR is approved and merged:
+
+```bash
+git checkout before-main
+git pull origin before-main
+```
