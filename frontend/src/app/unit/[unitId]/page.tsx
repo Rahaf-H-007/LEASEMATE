@@ -146,7 +146,7 @@ export default function UnitDetailPage() {
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
             <ImageSlider
               images={
-                unit.images && unit.images.length > 0
+                unit?.images && unit.images.length > 0
                   ? unit.images
                   : ["/placeholder-image.jpg"]
               }
@@ -155,11 +155,11 @@ export default function UnitDetailPage() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-8">
                   <UnitDetails
-                    title={unit.name}
+                    title={unit?.name}
                     rating={4.5}
                     reviews={0}
                     location={location}
-                    description={unit.description}
+                    description={unit?.description}
                   />
                   <div className="border-t border-gray-200 pt-8">
                     <AmenitiesSection amenities={transformedAmenities} />
@@ -168,15 +168,20 @@ export default function UnitDetailPage() {
                 <div className="lg:col-span-1">
                   <div className="sticky top-24">
                     <RentSidebarCard
-                      unitId={unit._id}
-                      rent={unit.pricePerMonth}
+                      unitId={unit?._id}
+                      rent={unit?.pricePerMonth}
                       leaseDuration="١٢ شهر"
-                      securityDeposit={unit.securityDeposit || unit.pricePerMonth}
-                      availableFrom={unit.status === "available" ? "متاح الآن" : "غير متاح"}
+                      securityDeposit={unit?.securityDeposit || unit?.pricePerMonth}
+                      availableFrom={unit?.status === "available" ? "متاح الآن" : "غير متاح"}
                       manager={{
                         name: ownerInfo?.name || "المالك",
                         phone: ownerInfo?.phone || "",
                         email: ownerInfo?.email || "",
+                      }}
+                      onBookingSuccess={() => {
+                        if (unitId) {
+                          apiService.getUnitById(unitId).then(setUnit);
+                        }
                       }}
                     />
                   </div>
