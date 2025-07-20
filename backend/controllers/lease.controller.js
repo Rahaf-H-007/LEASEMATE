@@ -1,6 +1,7 @@
 const Lease = require("../models/lease.model");
 const BookingRequest = require("../models/booking-request.model");
 const puppeteer = require('puppeteer');
+const Unit = require("../models/unit.model");
 
 const createLease = async (req, res) => {
   console.log("=== CREATE LEASE DEBUG ===");
@@ -50,6 +51,9 @@ const createLease = async (req, res) => {
     // ربط العقد بالـBookingRequest (اختياري)
     booking.leaseId = lease._id;
     await booking.save();
+
+    // تحديث حالة الوحدة إلى 'booked'
+    await Unit.findByIdAndUpdate(booking.unitId._id, { status: "booked" });
 
     console.log("Lease created successfully:", lease._id);
     res.status(201).json({ message: "Lease created.", lease });
