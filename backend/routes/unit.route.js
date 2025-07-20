@@ -6,10 +6,28 @@ const {
   addUnit,
   updateUnit,
   deleteUnit,
+  deleteUnitImage,
+  testDatabase,
+  getMyUnits,
 } = require("../controllers/unit.controller");
 
-router.route("/").get(getAllUnits).post(addUnit);
+const upload = require("../middlewares/upload.middleware");
+const { protect } = require("../middlewares/auth.middleware");
+const { checkRole } = require("../middlewares/role.middleware");
 
-router.route("/:id").get(getUnit).patch(updateUnit).delete(deleteUnit);
+router
+  .route("/")
+  .get(getAllUnits) // Public access for viewing units
+  .post(protect, checkRole("landlord"), upload.array("images", 5), addUnit); // Auth required for creating
+
+router.get("/my-units", protect, checkRole("landlord"), getMyUnits);
+
+router
+  .route("/:id")
+  .get(getUnit) // Public access for viewing individual units
+  .patch(protect, checkRole("landlord"), upload.array("images", 5), updateUnit) // Auth required for updating
+  .delete(protect, checkRole("landlord"), deleteUnit); // Auth required for deleting
+
+router.delete("/:id/image", protect, checkRole("landlord"), deleteUnitImage);
 
 module.exports = router;

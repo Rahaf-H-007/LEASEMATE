@@ -156,7 +156,7 @@ export default function UnitDetailPage() {
                 <div className="lg:col-span-2 space-y-8">
                   <UnitDetails
                     title={unit.name}
-                    rating={4.5}
+                    // rating={4.5}
                     reviews={0}
                     location={location}
                     description={unit.description}

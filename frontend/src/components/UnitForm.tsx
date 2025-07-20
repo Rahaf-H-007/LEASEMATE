@@ -79,6 +79,7 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
             onChange={handleImageUpload}
             className="hidden"
             id="image-upload"
+            suppressHydrationWarning
           />
           <label
             htmlFor="image-upload"
@@ -143,6 +144,7 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
             type="text"
             value={data.name}
             onChange={(e) => handleInputChange("name", e.target.value)}
+            suppressHydrationWarning
           />
           <ErrorMessage error={errors.name} />
         </div>
@@ -161,6 +163,7 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
             id="unit-type"
             value={data.type}
             onChange={(e) => handleInputChange("type", e.target.value)}
+            suppressHydrationWarning
           >
             <option value="">اختر نوع الوحدة</option>
             <option value="apartment">شقة</option>
@@ -187,6 +190,7 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
           rows={4}
           value={data.description}
           onChange={(e) => handleInputChange("description", e.target.value)}
+            suppressHydrationWarning
         />
         <ErrorMessage error={errors.description} />
       </div>
@@ -210,6 +214,7 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
             min="1"
             value={data.pricePerMonth}
             onChange={(e) => handleInputChange("pricePerMonth", e.target.value)}
+            suppressHydrationWarning
           />
           <ErrorMessage error={errors.pricePerMonth} />
         </div>
@@ -233,6 +238,7 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
             onChange={(e) =>
               handleInputChange("securityDeposit", e.target.value)
             }
+            suppressHydrationWarning
           />
           <ErrorMessage error={errors.securityDeposit} />
         </div>
@@ -254,6 +260,7 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
             min="1"
             value={data.numRooms}
             onChange={(e) => handleInputChange("numRooms", e.target.value)}
+            suppressHydrationWarning
           />
           <ErrorMessage error={errors.numRooms} />
         </div>
@@ -275,6 +282,7 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
             min="1"
             value={data.space}
             onChange={(e) => handleInputChange("space", e.target.value)}
+            suppressHydrationWarning
           />
           <ErrorMessage error={errors.space} />
         </div>
@@ -298,6 +306,7 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
             type="text"
             value={data.address}
             onChange={(e) => handleInputChange("address", e.target.value)}
+            suppressHydrationWarning
           />
           <ErrorMessage error={errors.address} />
         </div>
@@ -318,6 +327,7 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
             type="text"
             value={data.city}
             onChange={(e) => handleInputChange("city", e.target.value)}
+            suppressHydrationWarning
           />
           <ErrorMessage error={errors.city} />
         </div>
@@ -338,6 +348,7 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
             type="text"
             value={data.governorate}
             onChange={(e) => handleInputChange("governorate", e.target.value)}
+            suppressHydrationWarning
           />
           <ErrorMessage error={errors.governorate} />
         </div>
@@ -359,6 +370,7 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
             min="1"
             value={data.postalCode}
             onChange={(e) => handleInputChange("postalCode", e.target.value)}
+            suppressHydrationWarning
           />
           <ErrorMessage error={errors.postalCode} />
         </div>
@@ -384,6 +396,7 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
                   handleInputChange("isFurnished", true);
                 }}
                 className="w-5 h-5 text-orange-500 border-gray-300 focus:ring-orange-500"
+                suppressHydrationWarning
               />
               <span className="text-gray-900 font-bold text-sm font-cairo">
                 مفروشة
@@ -398,6 +411,7 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
                   handleInputChange("isFurnished", false);
                 }}
                 className="w-5 h-5 text-orange-500 border-gray-300 focus:ring-orange-500"
+                suppressHydrationWarning
               />
               <span className="text-gray-900 font-bold text-sm font-cairo">
                 غير مفروشة

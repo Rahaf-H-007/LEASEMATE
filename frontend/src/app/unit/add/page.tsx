@@ -311,6 +311,7 @@ export default function AddUnitPage() {
                   ? "bg-gray-400 cursor-not-allowed"
                   : "bg-orange-500 hover:bg-orange-600 hover:shadow-xl hover:scale-105"
               }`}
+              suppressHydrationWarning
             >
               {isSubmitting ? "جاري الحفظ..." : "حفظ الوحدة"}
             </button>

@@ -33,6 +33,10 @@ const getAllUnits = asyncWrapper(async (req, res) => {
     status: "available", // Only get available units
   };
 
+  // if (req.query.ownerId) {
+  //   filter.ownerId = req.query.ownerId;
+  // }
+
   if (search && search.trim()) {
     // Escape special regex characters to prevent regex errors
     const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
