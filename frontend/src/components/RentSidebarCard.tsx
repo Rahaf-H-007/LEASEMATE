@@ -17,6 +17,7 @@ interface RentSidebarCardProps {
   securityDeposit: number;
   availableFrom: string;
   manager: Manager;
+  onBookingSuccess?: () => void;
 }
 
 const RentSidebarCard: React.FC<RentSidebarCardProps> = ({
@@ -24,6 +25,7 @@ const RentSidebarCard: React.FC<RentSidebarCardProps> = ({
   rent,
   availableFrom,
   manager,
+  onBookingSuccess,
 }) => {
   const { user } = useAuth();
   const router = useRouter();
@@ -56,6 +58,7 @@ const RentSidebarCard: React.FC<RentSidebarCardProps> = ({
       toast.success("تم إرسال طلب الحجز بنجاح! سيتم التواصل معك قريباً.");
       setRequested(true);
       setSuccess(true); // set success state
+      if (onBookingSuccess) onBookingSuccess();
     } catch (err: any) {
       console.error("Booking request error:", err);
       toast.error(err.message || "حدث خطأ أثناء إرسال الطلب");
@@ -73,18 +76,7 @@ const RentSidebarCard: React.FC<RentSidebarCardProps> = ({
         </h3>
       </div>
 
-      <div className="space-y-4 text-base mb-6">
-        {/* <div className="flex justify-between items-center py-2 border-b border-gray-100">
-          <p className="text-gray-600 font-medium">التأمين</p>
-          <p className="text-gray-800 font-semibold">
-            {securityDeposit.toLocaleString()} جنيه
-          </p>
-        </div> */}
-        <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-          <p className="text-gray-600 dark:text-gray-200 font-medium">متاح من</p>
-          <p className="text-green-600 font-semibold">{availableFrom}</p>
-        </div>
-      </div>
+      
 
       <button
         className={`w-full text-lg font-bold py-4 px-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 active:translate-y-0 focus:outline-none focus:ring-4 focus:ring-orange-300 disabled:opacity-60 disabled:cursor-not-allowed 
