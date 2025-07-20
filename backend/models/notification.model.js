@@ -36,7 +36,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: [ 'LEASE_EXPIRED', 'GENERAL', 'MAINTENANCE_REQUEST', 'MAINTENANCE_UPDATE'],
+    enum: [ 'LEASE_EXPIRED', 'GENERAL', 'MAINTENANCE_REQUEST', 'MAINTENANCE_UPDATE', 'LEASE_APPROVED', 'BOOKING_REQUEST'],
     default: 'GENERAL',
   },
   isRead: {
