@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
+import { useRouter } from 'next/navigation';
 
 export interface Notification {
   index?:number;
@@ -11,6 +12,7 @@ export interface Notification {
   type: string;
   link?: string;
   leaseId?: string;
+  maintenanceRequestId?: string;
   landlordId?:string;
   tenantId?:string;
   isRead: boolean;
@@ -25,7 +27,9 @@ interface NotificationsContextType {
   notifications: Notification[];
   markAllAsRead: () => void;
   markSingleAsRead: (id: string) => void;
+  handleNotificationClick: (notification: Notification) => void;
   loading: boolean;
+  showToast: (message: string) => void;
 }
 
 const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined);
@@ -42,12 +46,31 @@ const BASE_URL = 'http://localhost:5000';
 
 export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, token, socket } = useAuth();
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(null), 3000);
+    
+    // Play notification sound
+    try {
+      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT');
+      audio.volume = 0.3;
+      audio.play().catch(() => {
+        // Ignore errors if audio fails to play
+      });
+    } catch (error) {
+      // Ignore audio errors
+    }
+  };
 
   const fetchNotifications = () => {
     if (!user?._id || !token) return;
 
+    console.log('🔍 Fetching notifications for user:', user._id);
     setLoading(true);
     fetch(`${BASE_URL}/api/notifications/${user._id}`, {
       headers: {
@@ -56,13 +79,18 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       credentials: 'include',
     })
       .then((res) => {
+        console.log('📡 Response status:', res.status);
         if (!res.ok) throw new Error('Failed to fetch notifications');
         return res.json();
       })
       .then((data) => {
-        setNotifications(data.data);
+        console.log('📋 Notifications data received:', data);
+        console.log('📋 Notifications count:', data.data?.length || 0);
+        setNotifications(data.data || []);
       })
-      .catch(console.error)
+      .catch((error) => {
+        console.error('❌ Error fetching notifications:', error);
+      })
       .finally(() => setLoading(false));
   };
 
@@ -71,13 +99,13 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     fetchNotifications();
   }, [user?._id, token]);
 
-  // Poll every 30 seconds
+  // Poll every 5 seconds instead of 30
   useEffect(() => {
     if (!user?._id || !token) return;
 
     const interval = setInterval(() => {
       fetchNotifications();
-    }, 30_000);
+    }, 5_000); // 5 seconds instead of 30
 
     return () => clearInterval(interval);
   }, [user?._id, token]);
@@ -88,7 +116,16 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const handleNewNotification = (notification: Notification) => {
       console.log("🔔 New notification received:", notification);
-      setNotifications((prev) => [notification, ...prev]);
+      // Immediately add the new notification to the list
+      setNotifications((prev) => {
+        // Check if notification already exists to avoid duplicates
+        const exists = prev.some(n => n._id === notification._id);
+        if (exists) {
+          return prev;
+        }
+        return [notification, ...prev];
+      });
+      showToast(`New notification: ${notification.title}`);
     };
 
     socket.on("newNotification", handleNewNotification);
@@ -142,16 +179,43 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       .catch(console.error);
   };
 
+  const handleNotificationClick = (notification: Notification) => {
+    // Mark notification as read
+    markSingleAsRead(notification._id);
+
+    // Navigate based on notification type
+    if (notification.type === 'MAINTENANCE_REQUEST' || notification.type === 'MAINTENANCE_UPDATE') {
+      // Navigate to maintenance requests page
+      router.push('/dashboard/maintenance-requests');
+    } else if (notification.type === 'LEASE_EXPIRED') {
+      // Navigate to leases page
+      router.push('/dashboard');
+    } else if (notification.link) {
+      // Use the provided link
+      router.push(notification.link);
+    } else {
+      // Default to dashboard
+      router.push('/dashboard');
+    }
+  };
+
   return (
     <NotificationsContext.Provider
       value={{
         notifications,
         markAllAsRead,
         markSingleAsRead,
+        handleNotificationClick,
         loading,
+        showToast,
       }}
     >
       {children}
+      {toastMessage && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50">
+          {toastMessage}
+        </div>
+      )}
     </NotificationsContext.Provider>
   );
 };

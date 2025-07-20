@@ -4,7 +4,7 @@ const Lease = require('../models/lease.model');
 
 exports.createNotification = async (req, res) => {
   try {
-    const { senderId, userId, title, message, type, link } = req.body;
+    const { senderId, userId, title, message, type, link, maintenanceRequestId } = req.body;
 
     // Rule 1: senderId must match logged-in user
     if (senderId !== req.user.id) {
@@ -30,7 +30,32 @@ exports.createNotification = async (req, res) => {
       });
     }
 
-    // Validate role and lease relationship
+    // Special handling for maintenance request notifications
+    if (type === 'MAINTENANCE_REQUEST' || type === 'MAINTENANCE_UPDATE') {
+      // For maintenance notifications, we don't need to check lease relationship
+      // The relationship is established through the maintenance request
+      const notification = await notificationService.createNotification({
+        senderId,
+        userId,
+        title,
+        message,
+        type,
+        link,
+        maintenanceRequestId
+      });
+
+      const io = req.app.get('io');
+      if (io) {
+        io.to(userId).emit('newNotification', notification);
+      }
+
+      return res.status(201).json({
+        status: "success",
+        data: notification
+      });
+    }
+
+    // For other notification types, validate role and lease relationship
     let leaseQuery = {};
 
     if (sender.role?.toLowerCase() === 'landlord') {

@@ -1,73 +1,90 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-// import { useLanguage } from "@/contexts/LanguageContext";
-import { useRouter } from "next/navigation";
-import Navbar from "@/components/Navbar";
-import { CheckCheck, Check } from "lucide-react";
-import { useNotifications } from "@/contexts/NotificationsContext";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationsContext';
+import Navbar from '@/components/Navbar';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function NotificationsPage() {
-  // const { t, language } = useLanguage();
+  const { user, isLoading } = useAuth();
+  const { notifications, loading, markAllAsRead, handleNotificationClick } = useNotifications();
   const router = useRouter();
-  const { notifications, markAllAsRead, markSingleAsRead } = useNotifications();
-  const [filter, setFilter] = useState("ALL");
-  const { user, token } = useAuth();
+  const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
-  const filteredNotifications =
-    filter === "ALL"
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.push('/auth/login');
+    }
+  }, [user, isLoading, router]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
+        <Navbar />
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-orange-500"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  const filteredNotifications = filter === 'all' 
       ? notifications
-      : notifications.filter((n) => n.type === filter);
+    : notifications.filter(n => !n.isRead);
 
-  const handleNotificationClick = async (notification: any) => {
-    if (!notification.isRead) {
-      await markSingleAsRead(notification._id);
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'MAINTENANCE_REQUEST':
+        return (
+          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </div>
+        );
+      case 'MAINTENANCE_UPDATE':
+        return (
+          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+        );
+      case 'LEASE_EXPIRED':
+        return (
+          <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+            <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+        );
+      default:
+        return (
+          <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4 19h6v-6H4v6z" />
+            </svg>
+          </div>
+        );
     }
+  };
 
-    let targetLink = notification.link;
-
-    if (
-      notification.type === "LEASE_EXPIRED" &&
-      notification.leaseId
-    ) {
-      // Determine who the current user wants to review
-      let revieweeId = null;
-
-      if (user?.role === "tenant") {
-        revieweeId = notification.landlordId;
-      } else if (user?.role === "landlord") {
-        revieweeId = notification.tenantId;
-      }
-
-      if (revieweeId) {
-        try {
-          const res = await fetch(
-            `http://localhost:5000/api/reviews/check/${notification.leaseId}/${revieweeId}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-
-          const data = await res.json();
-
-          if (data.exists) {
-            return;
-          } else {
-            targetLink = `/leave-review?leaseId=${notification.leaseId}&revieweeId=${revieweeId}`;
-          }
-        } catch (error) {
-          console.error("Error checking review existence:", error);
-          alert("Error checking review existence.");
-          return;
-        }
-      }
-    }
-
-    if (targetLink) {
-      router.push(targetLink);
+  const getNotificationTypeText = (type: string) => {
+    switch (type) {
+      case 'MAINTENANCE_REQUEST':
+        return 'طلب صيانة جديد';
+      case 'MAINTENANCE_UPDATE':
+        return 'تحديث طلب الصيانة';
+      case 'LEASE_EXPIRED':
+        return 'انتهاء عقد الإيجار';
+      default:
+        return 'إشعار عام';
     }
   };
 
@@ -75,112 +92,102 @@ export default function NotificationsPage() {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
       <Navbar />
 
-      <main className="pt-24 px-4">
-        <div className="max-w-7xl mx-auto">
-          {/* Page header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-              {"الإشعارات"}
-            </h1>
-            <p className="text-gray-600 dark:text-gray-300">
-              {"ابق على اطلاع بالتنبيهات والتذكيرات الهامة."}
-            </p>
-          </div>
-
-          {/* Filters */}
-          <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {"تصفية حسب:"}
-              </span>
-              <select
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 py-2 pl-3 pr-8 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 transition"
+      <main className="pt-24 pb-16 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">الإشعارات</h1>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setFilter('all')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  filter === 'all'
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
               >
-                <option value="ALL">{"الكل"}</option>
-                {/* <option value="MAINTENANCE_UPDATE">
-                  {"الصيانة"}
-                </option> */}
-                <option value="LEASE_EXPIRED">
-                  {"العقود"}
-                </option>
-                {/* <option value="GENERAL">
-                  {t("notifications.general")}
-                </option> */}
-              </select>
-            </div>
-
+                جميع الإشعارات
+              </button>
+              <button
+                onClick={() => setFilter('unread')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  filter === 'unread'
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                غير المقروءة
+              </button>
+              {notifications.some(n => !n.isRead) && (
             <button
               onClick={markAllAsRead}
-              className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 transition"
+                  className="px-4 py-2 rounded-lg text-sm font-medium bg-green-500 text-white hover:bg-green-600 transition-colors"
             >
-              {"تحديد الكل كمقروء"}
+                  تحديد الكل كمقروء
             </button>
+              )}
+            </div>
           </div>
 
-          {/* Notifications List */}
-          <div className="space-y-4">
-            {filteredNotifications.length === 0 ? (
-              <p className="text-gray-700 dark:text-gray-300">
-                {"لا توجد إشعارات."}
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+            </div>
+          ) : filteredNotifications.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4 19h6v-6H4v6z" />
+                </svg>
+              </div>
+              <p className="text-gray-500 text-lg">
+                {filter === 'all' ? 'لا توجد إشعارات' : 'لا توجد إشعارات غير مقروءة'}
               </p>
+            </div>
             ) : (
-              filteredNotifications.map((notification, index) => (
+            <div className="space-y-4">
+              {filteredNotifications.map((notification) => (
                 <div
-                  key={index}
-                  className={`relative rounded-xl p-4 pb-10 shadow border transition-all bg-white dark:bg-gray-800 cursor-pointer ${
-                    notification.isRead
-                      ? "opacity-80 border-gray-200 dark:border-gray-700"
-                      : "border-orange-300"
-                  }`}
+                  key={notification._id}
                   onClick={() => handleNotificationClick(notification)}
+                  className={`bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border cursor-pointer transition-all hover:shadow-md ${
+                    !notification.isRead ? 'border-orange-200 bg-orange-50 dark:bg-orange-900/20' : 'border-gray-200'
+                  }`}
                 >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+                  <div className="flex items-start gap-4">
+                    {getNotificationIcon(notification.type)}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
                         {notification.title}
                       </h3>
-                      <p className="text-sm text-gray-700 dark:text-gray-300">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500">
+                            {new Date(notification.createdAt).toLocaleDateString('ar-SA')}
+                          </span>
+                          {!notification.isRead && (
+                            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
                         {notification.message}
                       </p>
-                      {/* {notification.senderId?.name && (
-                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          {t("notifications.from")} {notification.senderId.name}
-                        </p>
-                      )} */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                          {getNotificationTypeText(notification.type)}
+                        </span>
+                        {notification.senderId && (
+                          <span className="text-xs text-gray-500">
+                            من: {notification.senderId.name}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-
-                  {/* Date */}
-                  <span
-                    className="absolute top-3 left-4 text-xs text-gray-500 dark:text-gray-400"
-                  >
-                    {new Date(notification.createdAt).toLocaleString()}
-                  </span>
-
-                  {/* Check icon */}
-                  <div
-                    className="absolute bottom-3 left-4"
-                  >
-                    {notification.isRead ? (
-                      <span
-                        className="text-green-500 dark:text-green-400"
-                        title={"تحديد كمقروء"}
-                      >
-                        <Check size={20} />
-                      </span>
-                    ) : (
-                      <CheckCheck
-                        size={20}
-                        className="text-orange-500 hover:text-orange-600 dark:hover:text-orange-400"
-                      />
-                    )}
-                  </div>
                 </div>
-              ))
+              ))}
+            </div>
             )}
-          </div>
         </div>
       </main>
     </div>

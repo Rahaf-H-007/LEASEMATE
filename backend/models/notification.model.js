@@ -14,6 +14,10 @@ const notificationSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Lease',
   },
+  maintenanceRequestId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'MaintenanceRequest',
+  },
   tenantId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
@@ -32,9 +36,8 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: [ 'LEASE_EXPIRED', 'GENERAL'],
+    enum: [ 'LEASE_EXPIRED', 'GENERAL', 'MAINTENANCE_REQUEST', 'MAINTENANCE_UPDATE'],
     default: 'GENERAL',
-    // 'PAYMENT_DUE', , 'VERIFICATION' , 'MAINTENANCE_UPDATE'
   },
   isRead: {
     type: Boolean,
