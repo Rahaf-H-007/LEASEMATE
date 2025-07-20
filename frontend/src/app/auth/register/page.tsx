@@ -17,21 +17,29 @@ export default function RegisterPage() {
     role: 'tenant' as 'landlord' | 'tenant',
   });
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
+    setFieldErrors({});
 
-    if (formData.password !== formData.confirmPassword) {
-      setError('كلمتا المرور غير متطابقتين');
-      return;
-    }
-
-    if (!formData.username && !formData.phone) {
-      setError('يرجى إدخال الاسم المستعار أو رقم الهاتف');
+    // Frontend validation
+    const errors: { [key: string]: string } = {};
+    if (!formData.name.trim()) errors.name = "الاسم مطلوب";
+    if (!formData.username.trim()) errors.username = "اسم المستخدم مطلوب";
+    if (!formData.phone.trim()) errors.phone = "رقم الهاتف مطلوب";
+    else if (!/^01[0-9]{9}$/.test(formData.phone)) errors.phone = "يرجى إدخال رقم هاتف مصري صحيح";
+    if (!formData.password) errors.password = "كلمة المرور مطلوبة";
+    else if (formData.password.length < 6) errors.password = "كلمة المرور يجب أن تكون 6 أحرف على الأقل";
+    if (!formData.confirmPassword) errors.confirmPassword = "تأكيد كلمة المرور مطلوب";
+    else if (formData.password !== formData.confirmPassword) errors.confirmPassword = "كلمتا المرور غير متطابقتين";
+    if (!formData.role) errors.role = "الدور مطلوب";
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
 
@@ -47,11 +55,40 @@ export default function RegisterPage() {
       };
 
       const response = await apiService.register(registerData);
-      login(response.token,response);
+      login(response.token, response);
       router.push('/auth/verification');
-    } catch (err: unknown) {
-      const error = err as Error;
-      setError(error.message || 'فشل التسجيل');
+    } catch (err: any) {
+      // استقبال أخطاء الباكند
+      if (err.errors && Array.isArray(err.errors)) {
+        const errors: { [key: string]: string } = {};
+        err.errors.forEach((e: any) => {
+          if ((e.param || e.path) && e.msg) {
+            errors[e.param || e.path] = e.msg;
+          }
+        });
+        setFieldErrors(errors);
+        setError('');
+        setIsLoading(false);
+        return;
+      }
+      if (err.message && err.message.startsWith('{')) {
+        try {
+          const errorObj = JSON.parse(err.message);
+          if (errorObj.errors && Array.isArray(errorObj.errors)) {
+            const errors: { [key: string]: string } = {};
+            errorObj.errors.forEach((e: any) => {
+              if ((e.param || e.path) && e.msg) {
+                errors[e.param || e.path] = e.msg;
+              }
+            });
+            setFieldErrors(errors);
+            setError('');
+            setIsLoading(false);
+            return;
+          }
+        } catch {}
+      }
+      setError(err.message || 'فشل التسجيل');
     } finally {
       setIsLoading(false);
     }
@@ -105,17 +142,20 @@ export default function RegisterPage() {
             className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
             required
           />
+          {fieldErrors.name && <div className="text-red-600 text-sm mt-1">{fieldErrors.name}</div>}
         </div>
         <div className="mb-4">
           <label htmlFor="username" className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">اسم المستخدم </label>
           <input
             type="text"
             id="username"
-              name="username"
+            name="username"
             value={formData.username}
             onChange={handleChange}
             className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+            placeholder="مثال: samirhasan"
           />
+          {fieldErrors.username && <div className="text-red-600 text-sm mt-1">{fieldErrors.username}</div>}
         </div>
         <div className="mb-4">
           <label htmlFor="phone" className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">رقم الهاتف</label>
@@ -126,7 +166,9 @@ export default function RegisterPage() {
             value={formData.phone}
             onChange={handleChange}
             className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+            placeholder="**********مثال: 010"
           />
+          {fieldErrors.phone && <div className="text-red-600 text-sm mt-1">{fieldErrors.phone}</div>}
         </div>
         <div className="mb-4">
           <label htmlFor="password" className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">كلمة المرور</label>
@@ -139,6 +181,7 @@ export default function RegisterPage() {
             className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
             required
           />
+          {fieldErrors.password && <div className="text-red-600 text-sm mt-1">{fieldErrors.password}</div>}
         </div>
         <div className="mb-6">
           <label htmlFor="confirmPassword" className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">تأكيد كلمة المرور</label>
@@ -151,7 +194,9 @@ export default function RegisterPage() {
             className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
             required
           />
+          {fieldErrors.confirmPassword && <div className="text-red-600 text-sm mt-1">{fieldErrors.confirmPassword}</div>}
         </div>
+        {fieldErrors.role && <div className="text-red-600 text-sm mb-2 text-center">{fieldErrors.role}</div>}
         <button
           type="submit"
           className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg transition-colors"
