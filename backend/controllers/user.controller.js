@@ -7,7 +7,7 @@ const register = async (req, res) => {
   const { name, username, phone, password, role } = req.body;
   const userExists = await User.findOne({ $or: [{ username }, { phone }] });
   if (userExists)
-    return res.status(400).json({ message: "User already exists" });
+    return res.status(400).json({ errors: [{ msg: "اسم المستخدم أو رقم الهاتف مستخدم بالفعل", param: username ? "username" : "phone" }] });
 
   const user = await User.create({ name, username, phone, password, role });
   res.status(201).json({
@@ -34,7 +34,7 @@ const login = async (req, res) => {
       verificationStatus: user.verificationStatus,
     });
   } else {
-    res.status(401).json({ message: "Invalid credentials" });
+    return res.status(401).json({ errors: [{ msg: "اسم المستخدم أو كلمة المرور غير صحيحة", param: "general" }] });
   }
 };
 
