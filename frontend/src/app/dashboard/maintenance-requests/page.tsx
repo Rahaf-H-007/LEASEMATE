@@ -320,6 +320,7 @@ export default function MaintenanceRequestsPage() {
                           className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
                           onClick={async () => {
                             try {
+                              console.log('PATCH /api/maintenance/:id', req._id, { status: 'resolved', notes: req._landlordNote || '' });
                               await axios.patch(`http://localhost:5000/api/maintenance/${req._id}`,
                                 { status: 'resolved', notes: req._landlordNote || '' },
                                 { headers: { Authorization: `Bearer ${token}` }, withCredentials: true }
