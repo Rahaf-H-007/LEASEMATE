@@ -9,7 +9,7 @@ export interface RegisterData {
 }
 
 export interface LoginData {
-  emailOrPhone: string;
+  usernameOrPhone: string;
   password: string;
 }
 
@@ -201,6 +201,10 @@ class ApiService {
       }
       throw error;
     }
+  }
+  
+  async getReviewsForUser(userId: string) {
+    return this.request(`/reviews/${userId}`);
   }
 
   async getUsers(token: string) {
