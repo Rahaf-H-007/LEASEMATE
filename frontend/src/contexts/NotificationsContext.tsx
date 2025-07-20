@@ -27,7 +27,7 @@ interface NotificationsContextType {
   notifications: Notification[];
   markAllAsRead: () => void;
   markSingleAsRead: (id: string) => void;
-  handleNotificationClick: (notification: Notification) => void;
+  handleNotificationClick: (notification: Notification, reviewSubmitted?: boolean) => void;
   loading: boolean;
   showToast: (message: string) => void;
 }
@@ -50,6 +50,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null); // NEW: error state
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -69,9 +70,8 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const fetchNotifications = () => {
     if (!user?._id || !token) return;
-
-    console.log('🔍 Fetching notifications for user:', user._id);
     setLoading(true);
+    setError(null);
     fetch(`${BASE_URL}/api/notifications/${user._id}`, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -79,36 +79,28 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       credentials: 'include',
     })
       .then((res) => {
-        console.log('📡 Response status:', res.status);
         if (!res.ok) throw new Error('Failed to fetch notifications');
         return res.json();
       })
       .then((data) => {
-        console.log('📋 Notifications data received:', data);
-        console.log('📋 Notifications count:', data.data?.length || 0);
         setNotifications(data.data || []);
+        setError(null);
       })
       .catch((error) => {
-        console.error('❌ Error fetching notifications:', error);
+        setError(error.message || 'Error fetching notifications');
+        setNotifications([]);
       })
       .finally(() => setLoading(false));
   };
 
-  // Initial load
+  // Fetch notifications only on initial load
   useEffect(() => {
-    fetchNotifications();
-  }, [user?._id, token]);
-
-  // Poll every 5 seconds instead of 30
-  useEffect(() => {
-    if (!user?._id || !token) return;
-
-    const interval = setInterval(() => {
+    if (user?._id && token) {
       fetchNotifications();
-    }, 5_000); // 5 seconds instead of 30
-
-    return () => clearInterval(interval);
+    }
   }, [user?._id, token]);
+
+  // Remove polling effect entirely
 
   // Listen for socket events
   useEffect(() => {
@@ -116,15 +108,8 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const handleNewNotification = (notification: Notification) => {
       console.log("🔔 New notification received:", notification);
-      // Immediately add the new notification to the list
-      setNotifications((prev) => {
-        // Check if notification already exists to avoid duplicates
-        const exists = prev.some(n => n._id === notification._id);
-        if (exists) {
-          return prev;
-        }
-        return [notification, ...prev];
-      });
+      // Fetch the latest notifications from the backend
+      setNotifications((prev) => [notification, ...prev]);
       showToast(`New notification: ${notification.title}`);
     };
 
@@ -179,17 +164,28 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       .catch(console.error);
   };
 
-  const handleNotificationClick = (notification: Notification) => {
+  const handleNotificationClick = (notification: Notification, reviewSubmitted?: boolean) => {
     // Mark notification as read
     markSingleAsRead(notification._id);
 
+    if (notification.type === 'LEASE_EXPIRED') {
+      if (reviewSubmitted) {
+        // Do nothing if review already submitted
+        return;
+      }
+      // Go to review page
+      if (notification.link) {
+        router.push(notification.link);
+        return;
+      }
+      // fallback
+      router.push('/leave-review');
+      return;
+    }
     // Navigate based on notification type
     if (notification.type === 'MAINTENANCE_REQUEST' || notification.type === 'MAINTENANCE_UPDATE') {
       // Navigate to maintenance requests page
       router.push('/dashboard/maintenance-requests');
-    } else if (notification.type === 'LEASE_EXPIRED') {
-      // Navigate to leases page
-      router.push('/dashboard');
     } else if (notification.link) {
       // Use the provided link
       router.push(notification.link);
