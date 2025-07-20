@@ -5,12 +5,50 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 import Navbar from '@/components/Navbar';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 export default function NotificationsPage() {
   const { user, isLoading } = useAuth();
   const { notifications, loading, markAllAsRead, handleNotificationClick } = useNotifications();
   const router = useRouter();
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [reviewStatus, setReviewStatus] = useState<{ [notificationId: string]: boolean }>({});
+
+  // Check review status for LEASE_EXPIRED notifications
+  useEffect(() => {
+    const checkReviews = async () => {
+      const checks: { [notificationId: string]: boolean } = {};
+      const promises = notifications
+        .filter(n => n.type === 'LEASE_EXPIRED')
+        .map(async (n) => {
+          // Extract leaseId and revieweeId from notification
+          const leaseId = n.leaseId;
+          // Determine revieweeId: if user is tenant, reviewee is landlord; if user is landlord, reviewee is tenant
+          let revieweeId = '';
+          if (user && user._id === n.tenantId && n.landlordId) {
+            revieweeId = n.landlordId;
+          } else if (user && user._id === n.landlordId && n.tenantId) {
+            revieweeId = n.tenantId;
+          }
+          if (leaseId && revieweeId) {
+            try {
+              const res = await fetch(`http://localhost:5000/api/reviews/check/${leaseId}/${revieweeId}`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('leasemate_token') || ''}` },
+              });
+              const data = await res.json();
+              checks[n._id] = !!data.exists;
+            } catch {
+              checks[n._id] = false;
+            }
+          }
+        });
+      await Promise.all(promises);
+      setReviewStatus(checks);
+    };
+    if (user && notifications.length > 0) {
+      checkReviews();
+    }
+  }, [user, notifications]);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -19,14 +57,7 @@ export default function NotificationsPage() {
   }, [user, isLoading, router]);
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
-        <Navbar />
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-orange-500"></div>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   if (!user) {
@@ -89,9 +120,9 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
       <Navbar />
-
       <main className="pt-24 pb-16 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-center mb-6">
@@ -128,11 +159,7 @@ export default function NotificationsPage() {
             </div>
           </div>
 
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-            </div>
-          ) : filteredNotifications.length === 0 ? (
+          {loading ? null : filteredNotifications.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -145,51 +172,64 @@ export default function NotificationsPage() {
             </div>
             ) : (
             <div className="space-y-4">
-              {filteredNotifications.map((notification) => (
-                <div
-                  key={notification._id}
-                  onClick={() => handleNotificationClick(notification)}
-                  className={`bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border cursor-pointer transition-all hover:shadow-md ${
-                    !notification.isRead ? 'border-orange-200 bg-orange-50 dark:bg-orange-900/20' : 'border-gray-200'
-                  }`}
-                >
-                  <div className="flex items-start gap-4">
-                    {getNotificationIcon(notification.type)}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                        {notification.title}
-                      </h3>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500">
-                            {new Date(notification.createdAt).toLocaleDateString('ar-SA')}
+              {filteredNotifications.map((notification) => {
+                const isLeaseExpired = notification.type === 'LEASE_EXPIRED';
+                const reviewSubmitted = isLeaseExpired ? reviewStatus[notification._id] : undefined;
+                return (
+                  <div
+                    key={notification._id}
+                    onClick={() => {
+                      if (isLeaseExpired && reviewSubmitted) return; // Do nothing if review exists
+                      if (isLeaseExpired) {
+                        handleNotificationClick(notification, !!reviewSubmitted);
+                      } else {
+                        handleNotificationClick(notification);
+                      }
+                    }}
+                    className={`bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border cursor-pointer transition-all hover:shadow-md ${
+                      !notification.isRead ? 'border-orange-200 bg-orange-50 dark:bg-orange-900/20' : 'border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-start gap-4">
+                      {getNotificationIcon(notification.type)}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {notification.title}
+                          </h3>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500">
+                              {new Date(notification.createdAt).toLocaleDateString('ar-SA')}
+                            </span>
+                            {!notification.isRead && (
+                              <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+                          {notification.message}
+                        </p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                            {getNotificationTypeText(notification.type)}
                           </span>
-                          {!notification.isRead && (
-                            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                          {notification.senderId && (
+                            <span className="text-xs text-gray-500">
+                              من: {notification.senderId.name}
+                            </span>
                           )}
                         </div>
                       </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
-                        {notification.message}
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
-                          {getNotificationTypeText(notification.type)}
-                        </span>
-                        {notification.senderId && (
-                          <span className="text-xs text-gray-500">
-                            من: {notification.senderId.name}
-                          </span>
-                        )}
-                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             )}
         </div>
       </main>
     </div>
+    </ProtectedRoute>
+    
   );
 }
