@@ -29,7 +29,7 @@ export default function LeaseDetailsPage() {
       setLoading(true);
       try {
         // جلب كل عقود المستخدم ثم إيجاد العقد المطلوب
-        const res = await apiService.getMyLeases() as any;
+        const res = (await apiService.getMyLeases()) as any;
         const found = res.data?.leases?.find((l: any) => l._id === leaseId);
         setLease(found || null);
       } catch (err: any) {
@@ -51,10 +51,22 @@ export default function LeaseDetailsPage() {
   };
 
   if (loading) {
-    return <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800"><Navbar /><div className="text-center pt-32 text-lg">جاري التحميل...</div></div>;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
+        <Navbar />
+        <div className="text-center pt-32 text-lg">جاري التحميل...</div>
+      </div>
+    );
   }
   if (!lease) {
-    return <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800"><Navbar /><div className="text-center pt-32 text-lg text-red-600">لم يتم العثور على العقد</div></div>;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
+        <Navbar />
+        <div className="text-center pt-32 text-lg text-red-600">
+          لم يتم العثور على العقد
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -63,59 +75,109 @@ export default function LeaseDetailsPage() {
       <Navbar />
       <div className="max-w-4xl mx-auto pt-20 px-4">
         <div className="flex justify-between items-center mb-6 no-print">
-          <h1 className="text-3xl font-bold text-orange-600 dark:text-orange-400">عقد إيجار وحدة سكنية</h1>
+          <h1 className="text-3xl font-bold text-orange-600 dark:text-orange-400">
+            عقد إيجار وحدة سكنية
+          </h1>
           <div className="flex gap-3">
             <button
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold"
               onClick={() => window.print()}
             >
-              طباعة مباشرة
-            </button>
-            <button
-              className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-semibold text-lg"
-              onClick={handleDownload}
-            >
-              تحميل PDF
+              طباعة العقد pdf
             </button>
           </div>
         </div>
-        
+
         {/* عقد HTML */}
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-8 text-right" dir="rtl">
+        <div
+          className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-8 text-right"
+          dir="rtl"
+        >
           {/* الطرفين */}
           <div className="grid md:grid-cols-2 gap-6 mb-8">
             <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-              <h3 className="text-lg font-bold text-orange-600 dark:text-orange-400 mb-3">الطرف الأول (المالك)</h3>
-              <p className="mb-2"><span className="font-semibold">الاسم:</span> {lease.landlordId?.name}</p>
-              <p className="mb-2"><span className="font-semibold">رقم الهاتف:</span> {lease.landlordId?.phone}</p>
+              <h3 className="text-lg font-bold text-orange-600 dark:text-orange-400 mb-3">
+                الطرف الأول (المالك)
+              </h3>
+              <p className="mb-2">
+                <span className="font-semibold">الاسم:</span>{" "}
+                {lease.landlordId?.name}
+              </p>
+              <p className="mb-2">
+                <span className="font-semibold">رقم الهاتف:</span>{" "}
+                {lease.landlordId?.phone}
+              </p>
             </div>
             <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-              <h3 className="text-lg font-bold text-orange-600 dark:text-orange-400 mb-3">الطرف الثاني (المستأجر)</h3>
-              <p className="mb-2"><span className="font-semibold">الاسم:</span> {lease.tenantId?.name}</p>
-              <p className="mb-2"><span className="font-semibold">رقم الهاتف:</span> {lease.tenantId?.phone}</p>
+              <h3 className="text-lg font-bold text-orange-600 dark:text-orange-400 mb-3">
+                الطرف الثاني (المستأجر)
+              </h3>
+              <p className="mb-2">
+                <span className="font-semibold">الاسم:</span>{" "}
+                {lease.tenantId?.name}
+              </p>
+              <p className="mb-2">
+                <span className="font-semibold">رقم الهاتف:</span>{" "}
+                {lease.tenantId?.phone}
+              </p>
             </div>
           </div>
 
           {/* بيانات الوحدة */}
           <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
-            <h3 className="text-lg font-bold text-orange-600 dark:text-orange-400 mb-3">بيانات الوحدة</h3>
+            <h3 className="text-lg font-bold text-orange-600 dark:text-orange-400 mb-3">
+              بيانات الوحدة
+            </h3>
             <div className="grid md:grid-cols-3 gap-4">
-              <p><span className="font-semibold">اسم الوحدة:</span> {lease.unitId?.name}</p>
-              <p><span className="font-semibold">العنوان:</span> {lease.unitId?.address}</p>
-              <p><span className="font-semibold">النوع:</span> {lease.unitId?.type}</p>
+              <p>
+                <span className="font-semibold">اسم الوحدة:</span>{" "}
+                {lease.unitId?.name}
+              </p>
+              <p>
+                <span className="font-semibold">العنوان:</span>{" "}
+                {lease.unitId?.address}
+              </p>
+              <p>
+                <span className="font-semibold">النوع:</span>{" "}
+                {lease.unitId?.type}
+              </p>
             </div>
           </div>
 
           {/* بيانات العقد */}
           <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
-            <h3 className="text-lg font-bold text-orange-600 dark:text-orange-400 mb-3">بيانات العقد</h3>
+            <h3 className="text-lg font-bold text-orange-600 dark:text-orange-400 mb-3">
+              بيانات العقد
+            </h3>
             <div className="grid md:grid-cols-2 gap-4">
-              <p><span className="font-semibold">قيمة الإيجار الشهري:</span> {lease.rentAmount} جنيه مصري</p>
-              <p><span className="font-semibold">قيمة التأمين:</span> {lease.depositAmount} جنيه مصري</p>
-              <p><span className="font-semibold">تاريخ بداية العقد:</span> {lease.startDate ? new Date(lease.startDate).toLocaleDateString('ar-EG') : '-'}</p>
-              <p><span className="font-semibold">تاريخ نهاية العقد:</span> {lease.endDate ? new Date(lease.endDate).toLocaleDateString('ar-EG') : '-'}</p>
-              <p><span className="font-semibold">شروط الدفع:</span> {lease.paymentTerms || '-'}</p>
-              <p><span className="font-semibold">حالة العقد:</span> {lease.status === 'active' ? 'نشط' : 'منتهي'}</p>
+              <p>
+                <span className="font-semibold">قيمة الإيجار الشهري:</span>{" "}
+                {lease.rentAmount} جنيه مصري
+              </p>
+              <p>
+                <span className="font-semibold">قيمة التأمين:</span>{" "}
+                {lease.depositAmount} جنيه مصري
+              </p>
+              <p>
+                <span className="font-semibold">تاريخ بداية العقد:</span>{" "}
+                {lease.startDate
+                  ? new Date(lease.startDate).toLocaleDateString("ar-EG")
+                  : "-"}
+              </p>
+              <p>
+                <span className="font-semibold">تاريخ نهاية العقد:</span>{" "}
+                {lease.endDate
+                  ? new Date(lease.endDate).toLocaleDateString("ar-EG")
+                  : "-"}
+              </p>
+              <p>
+                <span className="font-semibold">شروط الدفع:</span>{" "}
+                {lease.paymentTerms || "-"}
+              </p>
+              <p>
+                <span className="font-semibold">حالة العقد:</span>{" "}
+                {lease.status === "active" ? "نشط" : "منتهي"}
+              </p>
             </div>
           </div>
 
@@ -128,7 +190,9 @@ export default function LeaseDetailsPage() {
                 <p className="text-sm">{lease.landlordId?.name}</p>
               </div>
               <div className="text-center">
-                <h4 className="font-bold mb-4">توقيع الطرف الثاني (المستأجر)</h4>
+                <h4 className="font-bold mb-4">
+                  توقيع الطرف الثاني (المستأجر)
+                </h4>
                 <div className="border-b-2 border-gray-400 w-48 mx-auto h-8 mb-2"></div>
                 <p className="text-sm">{lease.tenantId?.name}</p>
               </div>
@@ -137,12 +201,30 @@ export default function LeaseDetailsPage() {
 
           {/* الخلاصة */}
           <div className="text-center mt-8 p-4 bg-orange-50 dark:bg-orange-900 rounded-lg">
-            <p className="text-gray-700 dark:text-gray-300 italic">
+            <p className="text-gray-700 font-extrabold dark:text-gray-300 ">
               تم تحرير هذا العقد بين الطرفين ويخضع لأحكام القانون المصري.
+            </p>
+            <p className="text-gray-700 font-extrabold dark:text-gray-300">
+              {" "}
+              بند فسخ العقد والإخلاء المبكر لا يجوز لأي من الطرفين (المالك أو
+              المستأجر) إنهاء عقد الإيجار أو طلب الإخلاء إلا بموجب إخطار كتابي
+              مُسبق يُقدَّم للطرف الآخر قبل مدة لا تقل عن ثلاثين (30) يومًا من
+              تاريخ الإخلاء المطلوب، مع توضيح الأسباب الداعية لذلك. ويُشترط أن
+              تكون أسباب الإخلاء مشروعة وتتفق مع القوانين واللوائح المعمول بها،
+              مثل:<br /> 1-تأخر المستأجر في سداد الإيجار لفترة تتجاوز المدة المحددة في
+              العقد. <br />
+               2-استخدام الوحدة المؤجرة في أنشطة غير مشروعة. <br />
+               3-الإضرار الجسيم
+              بالوحدة المؤجرة.
+            </p>
+            <p className="text-gray-700 dark:text-gray-300">
+              تم التوقيع على هذا العقد في يوم{" "}
+              {new Date().toLocaleDateString("ar-EG")}، ويعتبر ساري المفعول من
+              تاريخ التوقيع.
             </p>
           </div>
         </div>
       </div>
     </div>
   );
-} 
+}
