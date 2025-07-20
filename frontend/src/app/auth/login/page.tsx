@@ -15,6 +15,7 @@ export default function LoginPage() {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
   const { login, user } = useAuth();
   const router = useRouter();
 
@@ -35,10 +36,25 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setFieldErrors({});
+
+    // Frontend validation
+    const errors: { [key: string]: string } = {};
+    if (!formData.usernameOrPhone.trim()) errors.usernameOrPhone = "اسم المستخدم أو رقم الهاتف مطلوب";
+    if (!formData.password) errors.password = "كلمة المرور مطلوبة";
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const response = await apiService.login(formData);
+      // أرسل الحقل باسم emailOrPhone كما هو معرف في LoginData
+      const response = await apiService.login({
+        usernameOrPhone: formData.usernameOrPhone,
+        password: formData.password,
+      });
       login(response.token, response); // Pass both token and user object
       // Redirect based on role
       if (response.role === 'admin') {
@@ -50,9 +66,61 @@ export default function LoginPage() {
       } else {
         router.push('/');
       }
-    } catch (err: unknown) {
-      const error = err as Error;
-      setError(error.message || 'فشل تسجيل الدخول');
+    } catch (err: any) {
+      console.log('LOGIN ERROR:', err);
+      setError(
+        err?.message ||
+        (err?.errors && err.errors[0]?.msg) ||
+        'فشل تسجيل الدخول'
+      );
+      setIsLoading(false);
+      // استقبال أخطاء الباكند
+      if (err.errors && Array.isArray(err.errors)) {
+        const errors: { [key: string]: string } = {};
+        let hasGeneralError = false;
+        err.errors.forEach((e: any) => {
+          if ((e.param || e.path) && e.msg) {
+            if (e.param === "general" || e.path === "general") {
+              setError(e.msg);
+              hasGeneralError = true;
+            } else {
+              errors[e.param || e.path] = e.msg;
+            }
+          }
+        });
+        if (!hasGeneralError) {
+          setFieldErrors(errors);
+          setError('');
+        }
+        setIsLoading(false);
+        return;
+      }
+      if (err.message && err.message.startsWith('{')) {
+        try {
+          const errorObj = JSON.parse(err.message);
+          if (errorObj.errors && Array.isArray(errorObj.errors)) {
+            const errors: { [key: string]: string } = {};
+            let hasGeneralError = false;
+            errorObj.errors.forEach((e: any) => {
+              if ((e.param || e.path) && e.msg) {
+                if (e.param === "general" || e.path === "general") {
+                  setError(e.msg);
+                  hasGeneralError = true;
+                } else {
+                  errors[e.param || e.path] = e.msg;
+                }
+              }
+            });
+            if (!hasGeneralError) {
+              setFieldErrors(errors);
+              setError('');
+            }
+            setIsLoading(false);
+            return;
+          }
+        } catch {}
+      }
+      setError(err.message || 'فشل تسجيل الدخول');
     } finally {
       setIsLoading(false);
     }
@@ -124,6 +192,7 @@ export default function LoginPage() {
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
               required
             />
+            {fieldErrors.usernameOrPhone && <div className="text-red-600 text-sm mt-1">{fieldErrors.usernameOrPhone}</div>}
           </div>
           <div className="mb-6">
             <label htmlFor="password" className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">كلمة المرور</label>
@@ -136,6 +205,7 @@ export default function LoginPage() {
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
               required
             />
+            {fieldErrors.password && <div className="text-red-600 text-sm mt-1">{fieldErrors.password}</div>}
           </div>
           <button
             type="submit"
