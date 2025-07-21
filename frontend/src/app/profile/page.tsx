@@ -117,7 +117,7 @@ export default function ProfilePage() {
     <ProtectedRoute>
          <div className="min-h-screen bg-orange-50 dark:bg-stone-900">
       <Navbar />
-      <div className="flex pt-20 items-center justify-center min-h-[calc(100vh-80px)]">{/* Adjust height for navbar */}
+      <div className="flex pt-24 items-center justify-center min-h-[calc(100vh-80px)]">{/* Adjust height for navbar */}
         <main className="max-w-2xl w-full p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-xl">
           <div className="flex flex-col items-center gap-4 mb-8">
             {user.avatarUrl ? (
