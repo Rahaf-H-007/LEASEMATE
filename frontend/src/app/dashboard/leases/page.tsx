@@ -47,7 +47,7 @@ export default function LeasesPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
       <Navbar />
-      <div className="max-w-4xl mx-auto pt-20 px-4">
+      <div className="max-w-4xl mx-auto pt-32 px-4">
         <h1 className="text-3xl font-bold mb-8 text-orange-600 dark:text-orange-400 text-center">عقودي</h1>
         {loading ? (
           <div className="text-center py-12 text-lg text-gray-600 dark:text-gray-300">جاري التحميل...</div>
