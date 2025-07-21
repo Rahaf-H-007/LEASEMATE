@@ -7,6 +7,8 @@ import UnitForm from "@/components/UnitForm";
 import AmenitiesForm from "../../../components/AmentiesForm";
 import { apiService } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import Navbar from "@/components/Navbar";
 
 interface UnitData {
   name: string;
@@ -282,8 +284,9 @@ export default function AddUnitPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800 py-8 text-gray-900 dark:text-white pt-14">
-      <Toaster />
+      <main className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800 py-8 text-gray-900 dark:text-white pt-14">
+        <Navbar/>
+        <Toaster />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <header className="mb-10 text-center">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4 font-cairo">
