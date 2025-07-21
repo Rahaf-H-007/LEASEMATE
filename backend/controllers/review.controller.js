@@ -12,31 +12,31 @@ exports.createReview = async (req, res) => {
     if (!leaseId || !revieweeId || !rating) {
       return res.status(400).json({
         status: "fail",
-        message: "leaseId, revieweeId, and rating are required.",
+        message: "الرقم التعريفي للعقد، والمُقيَّم، والتقييم مطلوبة.",
       });
     }
 
-    // Check if lease exists
+    // التحقق من وجود العقد
     const lease = await Lease.findById(leaseId);
     if (!lease) {
       return res.status(404).json({
         status: "fail",
-        message: "Lease not found.",
+        message: "لم يتم العثور على العقد.",
       });
     }
 
-    // Check the reviewer is tenant or landlord in the lease
+    // التحقق من أن المراجع هو المستأجر أو المالك في هذا العقد
     const reviewerIsTenant = lease.tenantId.toString() === reviewerId;
     const reviewerIsLandlord = lease.landlordId.toString() === reviewerId;
 
     if (!reviewerIsTenant && !reviewerIsLandlord) {
       return res.status(403).json({
         status: "fail",
-        message: "You are not associated with this lease.",
+        message: "أنت غير مرتبط بهذا العقد.",
       });
     }
 
-    // Determine allowed reviewee
+    // تحديد الشخص المسموح بتقييمه
     const expectedRevieweeId = reviewerIsTenant
       ? lease.landlordId.toString()
       : lease.tenantId.toString();
@@ -44,11 +44,11 @@ exports.createReview = async (req, res) => {
     if (revieweeId !== expectedRevieweeId) {
       return res.status(403).json({
         status: "fail",
-        message: "You can only review the other party in this lease.",
+        message: "يمكنك فقط تقييم الطرف الآخر في هذا العقد.",
       });
     }
 
-    // Check if a review already exists for this lease from this reviewer
+    // التحقق من وجود تقييم مسبق لهذا العقد من هذا المراجع
     const existingReview = await Review.findOne({
       leaseId,
       reviewerId,
@@ -57,24 +57,23 @@ exports.createReview = async (req, res) => {
     if (existingReview) {
       return res.status(400).json({
         status: "fail",
-        message: "You have already submitted a review for this lease.",
+        message: "لقد قمت بإرسال تقييم لهذا العقد مسبقًا.",
       });
     }
+
     let sentiment = null;
     let keywords = [];
     let abusive = false;
 
     if (comment) {
-      // Call OpenAI
+      // تحليل التعليق باستخدام OpenAI
       const analysis = await analyzeReviewWithOpenAI(comment);
-
       sentiment = analysis.sentiment;
       keywords = analysis.keywords;
       abusive = analysis.abusive;
     }
 
-
-    // Create the review
+    // إنشاء التقييم
     const review = await Review.create({
       leaseId,
       reviewerId,
@@ -95,7 +94,7 @@ exports.createReview = async (req, res) => {
     console.error(error);
     res.status(500).json({
       status: "error",
-      message: "Server error while creating review.",
+      message: "حدث خطأ في الخادم أثناء إنشاء التقييم.",
     });
   }
 };
@@ -105,7 +104,7 @@ exports.getReviewsForUser = async (req, res) => {
   try {
     const userId = req.params.userId;
 
-    // Any user can view reviews for anyone
+    // يمكن لأي مستخدم مشاهدة تقييمات أي شخص
     const reviews = await Review.find({ revieweeId: userId })
       .populate("reviewerId", "name avatarUrl")
       .populate("leaseId", "startDate endDate");
@@ -119,10 +118,12 @@ exports.getReviewsForUser = async (req, res) => {
     console.error(error);
     res.status(500).json({
       status: "error",
-      message: "Server error while fetching reviews.",
+      message: "حدث خطأ في الخادم أثناء جلب التقييمات.",
     });
   }
 };
+
+// GET /api/reviews/check/:leaseId/:revieweeId
 exports.checkReviewExists = async (req, res) => {
   try {
     const leaseId = req.params.leaseId;
@@ -132,17 +133,17 @@ exports.checkReviewExists = async (req, res) => {
     const existingReview = await Review.findOne({
       leaseId,
       revieweeId,
-      reviewerId
+      reviewerId,
     });
 
     res.status(200).json({
-      exists: !!existingReview
+      exists: !!existingReview,
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
       status: "error",
-      message: "Error checking review existence"
+      message: "حدث خطأ أثناء التحقق من وجود التقييم.",
     });
   }
 };
