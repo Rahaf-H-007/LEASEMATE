@@ -217,7 +217,7 @@ export default function MaintenanceRequestsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
       <Navbar />
-      <main className="mt-20 pt-4 pb-16 px-4 max-w-2xl mx-auto">
+      <main className="mt-20 pt-32 pb-16 px-4 max-w-2xl mx-auto">
         <h1 className="text-2xl font-bold mb-6 text-center text-gray-900 dark:text-white">طلبات الصيانة</h1>
         {user?.role === "tenant" && (
           <form
