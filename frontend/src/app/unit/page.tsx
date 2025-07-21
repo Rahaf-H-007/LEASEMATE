@@ -251,7 +251,7 @@ export default function UnitsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-white pt-14">
       <Navbar />
-      <div className="mt-4">
+      <div className="mt-4 pt-8">
         <main className="grid grid-cols-12 flex-1">
           <aside className="col-span-12 md:col-span-3 border-r border-[var(--light-gray)] p-6">
             <FilterSidebar values={filters} onSubmit={handleFilterSubmit} />
