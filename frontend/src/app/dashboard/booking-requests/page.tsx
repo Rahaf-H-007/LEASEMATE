@@ -60,7 +60,7 @@ export default function BookingRequestsPage() {
         console.log("User role:", user?.role);
         console.log("================================");
         
-        const res = await apiService.getLandlordBookingRequests() as any;
+        const res = (await apiService.getLandlordBookingRequests()) as any;
         console.log("API Response:", res);
         setRequests(res.data?.requests || []);
       } catch (err: any) {
@@ -84,7 +84,9 @@ export default function BookingRequestsPage() {
     });
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
@@ -114,7 +116,7 @@ export default function BookingRequestsPage() {
     <ProtectedRoute>
         <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
       <Navbar />
-      <div className="max-w-4xl mx-auto pt-20 px-4">
+      <div className="max-w-4xl mx-auto pt-32 px-4">
         <h1 className="text-3xl font-bold mb-8 text-orange-600 dark:text-orange-400 text-center">طلبات الإيجار الجديدة</h1>
         
         {/* معلومات المستخدم للتشخيص */}
@@ -156,8 +158,31 @@ export default function BookingRequestsPage() {
                   <tr key={req._id} className="border-b border-gray-200 dark:border-gray-800">
                     <td className="py-2 px-4 font-semibold">{req.unitId?.name}</td>
                     <td className="py-2 px-4">{req.tenantId?.name}</td>
-                    <td className="py-2 px-4">{req.message || "-"}</td>
-                    <td className="py-2 px-4">{new Date(req.createdAt).toLocaleDateString()}</td>
+                    <td className="py-2 px-4 text-center">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            router.push(`/profile/${req.tenantId?._id}`)
+                          }
+                          title="عرض ملف المستأجر"
+                          className="focus:outline-none"
+                        >
+                          <svg
+                            className="w-5 h-5 text-orange-600 inline-block align-middle"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </button>
+                      </td>
+                      <td className="py-2 px-4">
+                        {new Date(req.createdAt).toLocaleDateString()}
+                      </td>
                     <td className="py-2 px-4">
                       <button
                         className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold"
