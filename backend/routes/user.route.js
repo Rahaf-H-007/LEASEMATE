@@ -9,6 +9,7 @@ const {
 const { protect } = require("../middlewares/auth.middleware");
 const upload = require("../middlewares/upload.middleware");
 const { body, validationResult } = require("express-validator");
+const { getUserById } = require("../controllers/user.controller");
 
 const router = express.Router();
 
@@ -50,6 +51,7 @@ router.post("/login", login);
 router.get("/me", protect, getProfile);
 router.put("/me", protect, updateProfile);
 router.post("/me/avatar", protect, upload.single("avatar"), uploadAvatar);
+router.get("/:id", getUserById);
 
 router.post(
   "/me/verify-id",
