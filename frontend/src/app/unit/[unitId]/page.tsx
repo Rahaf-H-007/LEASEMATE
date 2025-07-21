@@ -177,6 +177,7 @@ export default function UnitDetailPage() {
                         name: ownerInfo?.name || "المالك",
                         phone: ownerInfo?.phone || "",
                         email: ownerInfo?.email || "",
+                        landlordId: ownerInfo?._id || undefined,
                       }}
                       onBookingSuccess={() => {
                         if (unitId) {
