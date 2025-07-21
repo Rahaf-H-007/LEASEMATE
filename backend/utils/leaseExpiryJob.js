@@ -45,8 +45,13 @@ const landlordReviewLink = `/leave-review?leaseId=${lease._id}&revieweeId=${leas
           link: landlordReviewLink,
         });
 
-        io.to(lease.tenantId.toString()).emit("newNotification", tenantNotification);
-        io.to(lease.landlordId.toString()).emit("newNotification", landlordNotification);
+        console.log('📡 Emitting newNotification to tenant:', lease.tenantId.toString());
+        // Populate senderId before emitting
+        const populatedTenantNotification = await tenantNotification.populate('senderId', 'name avatarUrl');
+        const populatedLandlordNotification = await landlordNotification.populate('senderId', 'name avatarUrl');
+        io.to(lease.tenantId.toString()).emit("newNotification", populatedTenantNotification);
+        io.to(lease.landlordId.toString()).emit("newNotification", populatedLandlordNotification);
+        console.log('✅ Lease expiry notifications emitted successfully');
 
         lease.status = "expired";
         await lease.save();
