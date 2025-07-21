@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { useRouter } from 'next/navigation';
 
@@ -27,7 +27,7 @@ interface NotificationsContextType {
   notifications: Notification[];
   markAllAsRead: () => void;
   markSingleAsRead: (id: string) => void;
-  handleNotificationClick: (notification: Notification, reviewSubmitted?: boolean) => void;
+  handleNotificationClick: (notification: Notification) => void;
   loading: boolean;
   showToast: (message: string) => void;
 }
@@ -48,9 +48,10 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
   const { user, token, socket } = useAuth();
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Only for initial load
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null); // NEW: error state
+  const fallbackFetched = useRef(false);
+  const socketReceived = useRef(false);
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -68,10 +69,9 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const fetchNotifications = () => {
+  // Fallback HTTP fetch if socket doesn't deliver notifications in time
+  const fallbackFetchNotifications = () => {
     if (!user?._id || !token) return;
-    setLoading(true);
-    setError(null);
     fetch(`${BASE_URL}/api/notifications/${user._id}`, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -84,41 +84,67 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       })
       .then((data) => {
         setNotifications(data.data || []);
-        setError(null);
       })
       .catch((error) => {
-        setError(error.message || 'Error fetching notifications');
-        setNotifications([]);
+        console.error('❌ Error fetching notifications (fallback):', error);
       })
       .finally(() => setLoading(false));
   };
 
-  // Fetch notifications only on initial load
+  // On user change, clear notifications and set loading
   useEffect(() => {
-    if (user?._id && token) {
-      fetchNotifications();
+    setNotifications([]);
+    setLoading(true);
+    fallbackFetched.current = false;
+    socketReceived.current = false;
+  }, [user?._id]);
+
+  // Listen for socket events (real-time and initial load)
+  useEffect(() => {
+    if (!socket || !user?._id) {
+      console.log('🔌 Socket or user not available:', { socket: !!socket, userId: user?._id });
+      return;
     }
-  }, [user?._id, token]);
 
-  // Remove polling effect entirely
-
-  // Listen for socket events
-  useEffect(() => {
-    if (!socket) return;
+    console.log('🔌 Setting up notification listener for user:', user._id);
 
     const handleNewNotification = (notification: Notification) => {
-      console.log("🔔 New notification received:", notification);
-      // Fetch the latest notifications from the backend
-      setNotifications((prev) => [notification, ...prev]);
-      showToast(`New notification: ${notification.title}`);
+      console.log('📧 Received new notification:', notification);
+      socketReceived.current = true;
+      setLoading(false);
+      setNotifications((prev) => {
+        // Deduplicate by _id
+        const exists = prev.some(n => n._id === notification._id);
+        if (exists) {
+          console.log('🔄 Notification already exists, skipping duplicate');
+          return prev;
+        }
+        console.log('✅ Adding new notification to list');
+        return [notification, ...prev];
+      });
+      if (notification.title) {
+        showToast(`New notification: ${notification.title}`);
+      }
     };
 
     socket.on("newNotification", handleNewNotification);
+    console.log('✅ Notification listener attached');
+
+    // Fallback: if no notifications received via socket in 2 seconds, fetch via HTTP
+    const fallbackTimeout = setTimeout(() => {
+      if (!socketReceived.current && !fallbackFetched.current) {
+        console.log('⏰ Fallback: No socket notifications received, fetching via HTTP');
+        fallbackFetched.current = true;
+        fallbackFetchNotifications();
+      }
+    }, 2000);
 
     return () => {
+      console.log('🔌 Cleaning up notification listener');
       socket.off("newNotification", handleNewNotification);
+      clearTimeout(fallbackTimeout);
     };
-  }, [socket]);
+  }, [socket, user?._id, token]);
 
   const markAllAsRead = () => {
     if (!user?._id || !token) return;
@@ -164,28 +190,47 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       .catch(console.error);
   };
 
-  const handleNotificationClick = (notification: Notification, reviewSubmitted?: boolean) => {
+  // Helper to check if review exists for a lease and reviewee
+  const checkReviewExists = async (leaseId?: string, revieweeId?: string) => {
+    if (!leaseId || !revieweeId || !token) return false;
+    try {
+      const res = await fetch(
+        `${BASE_URL}/api/reviews/check/${leaseId}/${revieweeId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      const data = await res.json();
+      return data.exists;
+    } catch (error) {
+      console.error('Error checking review existence:', error);
+      return false;
+    }
+  };
+
+  const handleNotificationClick = async (notification: Notification) => {
     // Mark notification as read
     markSingleAsRead(notification._id);
 
-    if (notification.type === 'LEASE_EXPIRED') {
-      if (reviewSubmitted) {
-        // Do nothing if review already submitted
-        return;
-      }
-      // Go to review page
-      if (notification.link) {
-        router.push(notification.link);
-        return;
-      }
-      // fallback
-      router.push('/leave-review');
-      return;
-    }
     // Navigate based on notification type
     if (notification.type === 'MAINTENANCE_REQUEST' || notification.type === 'MAINTENANCE_UPDATE') {
-      // Navigate to maintenance requests page
       router.push('/dashboard/maintenance-requests');
+    } else if (notification.type === 'LEASE_EXPIRED') {
+      // For LEASE_EXPIRED, check if review already exists
+      // Assume notification.link is the leave-review page with leaseId and tenantId/landlordId
+      const leaseId = notification.leaseId;
+      // Determine revieweeId: if user is tenant, reviewee is landlord; if user is landlord, reviewee is tenant
+      let revieweeId = undefined;
+      if (user?._id && notification.landlordId && notification.tenantId) {
+        revieweeId = user._id === notification.landlordId ? notification.tenantId : notification.landlordId;
+      }
+      const alreadyReviewed = await checkReviewExists(leaseId, revieweeId);
+      if (!alreadyReviewed && notification.link) {
+        router.push(notification.link);
+      }
+      // If already reviewed, do nothing
     } else if (notification.link) {
       // Use the provided link
       router.push(notification.link);
