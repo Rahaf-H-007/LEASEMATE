@@ -7,7 +7,6 @@ export type FilterValues = {
   type: string;
   furnishing: string;
   amenities: string[];
-  verified: boolean;
   governorate: string;
 };
 
@@ -32,10 +31,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ values, onSubmit }) => {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value, type } = e.target;
-    if (type === "checkbox" && name === "verified") {
-      const checked = (e.target as HTMLInputElement).checked;
-      setLocal((prev) => ({ ...prev, verified: checked }));
-    } else if (type === "checkbox" && name.startsWith("amenity-")) {
+    if (type === "checkbox" && name.startsWith("amenity-")) {
       const amenity = value;
       setLocal((prev) => {
         const exists = prev.amenities.includes(amenity);
@@ -182,26 +178,6 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ values, onSubmit }) => {
             </label>
           ))}
         </div>
-      </div>
-      <div className="flex items-center justify-between pt-4">
-        <label
-          className="text-[var(--dark-brown)] text-base font-medium"
-          htmlFor="verified-only"
-        >
-          موثوق فقط
-        </label>
-        <label className="relative inline-flex h-8 w-14 cursor-pointer items-center">
-          <input
-            className="sr-only peer"
-            id="verified-only"
-            name="verified"
-            type="checkbox"
-            checked={local.verified}
-            onChange={handleChange}
-          />
-          <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-gradient-to-r peer-checked:from-orange-400 peer-checked:to-orange-600 transition-all duration-300 shadow-inner"></div>
-          <div className="absolute top-1 left-1 h-6 w-6 rounded-full bg-white transition-all duration-300 peer-checked:translate-x-6 shadow-lg border border-gray-200 peer-checked:border-orange-200"></div>
-        </label>
       </div>
       <div className="pt-6 border-t border-gray-200">
         <button

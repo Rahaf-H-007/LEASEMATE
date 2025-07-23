@@ -18,7 +18,6 @@ const getAllUnits = asyncWrapper(async (req, res) => {
     lat,
     lng,
     radius = 50,
-    verified,
     governorate,
     hasAC,
     hasWifi,
@@ -83,61 +82,15 @@ const getAllUnits = asyncWrapper(async (req, res) => {
   // Calculate pagination
   const skip = (page - 1) * limit;
 
-  // Helper function to get units with optional verification filter
-  const getUnitsQuery = async (baseFilter) => {
-    if (verified === "true") {
-      // Use aggregation pipeline to filter by verified owners
-      return await Unit.aggregate([
-        { $match: baseFilter },
-        {
-          $lookup: {
-            from: "users",
-            localField: "ownerId",
-            foreignField: "_id",
-            as: "owner",
-          },
-        },
-        {
-          $addFields: {
-            ownerData: { $arrayElemAt: ["$owner", 0] },
-          },
-        },
-        {
-          $match: {
-            "ownerData.verificationStatus.status": "approved",
-          },
-        },
-        {
-          $addFields: {
-            ownerId: "$ownerData",
-          },
-        },
-        {
-          $project: {
-            "ownerId.password": 0,
-            "ownerId.verificationStatus.idData": 0,
-            "ownerId.verificationStatus.uploadedIdUrl": 0,
-            "ownerId.verificationStatus.selfieUrl": 0,
-            owner: 0,
-            ownerData: 0,
-          },
-        },
-        { $sort: { createdAt: -1 } },
-      ]);
-    } else {
-      return await Unit.find(baseFilter)
-        .populate("ownerId", "name phone username verificationStatus")
-        .sort({ createdAt: -1 });
-    }
-  };
+  // Get all units with filters applied (all units are from verified landlords)
+  const allUnits = await Unit.find(filter)
+    .populate("ownerId", "name phone username verificationStatus")
+    .sort({ createdAt: -1 });
 
   let units = [];
   let total = 0;
 
-  // Get all units with filters applied
-  const allUnits = await getUnitsQuery(filter);
-
-  // If we have user location and no search term, sort by proximity (nearby first, then all others)
+  // If we have user location, sort by proximity (nearby first, then all others)
   if (lat && lng && (!search || search.trim() === "")) {
     // Helper function to calculate distance between two points in meters
     const calculateDistance = (lat1, lng1, lat2, lng2) => {

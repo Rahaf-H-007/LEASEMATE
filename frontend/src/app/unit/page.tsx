@@ -44,7 +44,6 @@ export default function UnitsPage() {
     type: params.get("type") || "",
     furnishing: params.get("furnishing") || "",
     amenities: params.getAll("amenities"),
-    verified: params.get("verified") === "true",
     governorate: params.get("governorate") || "",
   });
 
@@ -136,7 +135,6 @@ export default function UnitsPage() {
           lat?: number;
           lng?: number;
           radius?: number;
-          verified?: string;
           governorate?: string;
           hasAC?: boolean;
           hasWifi?: boolean;
@@ -166,9 +164,6 @@ export default function UnitsPage() {
         } else if (filters.furnishing === "false") {
           apiParams.isFurnished = false;
         }
-
-        // Add verified filter
-        if (filters.verified) apiParams.verified = "true";
 
         // Add amenity filters (convert to boolean for API service)
         if (filters.amenities.includes("hasAC")) apiParams.hasAC = true;
@@ -210,7 +205,6 @@ export default function UnitsPage() {
     filters.type,
     filters.furnishing,
     filters.governorate,
-    filters.verified,
     filters.amenities,
     userLocation,
     isLocationInitialized,
@@ -366,11 +360,7 @@ export default function UnitsPage() {
                     {units
                       .filter((unit) => unit.status === "available") // Only show available units
                       .map((unit) => {
-                        // Check if owner is verified (status 'approved' means all verification steps are complete)
-                        const isOwnerVerified =
-                          typeof unit.ownerId === "object" &&
-                          unit.ownerId?.verificationStatus?.status ===
-                            "approved";
+                        const isOwnerVerified = true;
 
                         return (
                           <UnitCard

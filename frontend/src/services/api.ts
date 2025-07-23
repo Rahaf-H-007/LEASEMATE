@@ -247,7 +247,6 @@ class ApiService {
       lat?: number;
       lng?: number;
       radius?: number;
-      verified?: string;
       governorate?: string;
       isFurnished?: boolean;
       hasAC?: boolean;
@@ -274,7 +273,6 @@ class ApiService {
       if (params.lng) searchParams.append("lng", params.lng.toString());
       if (params.radius)
         searchParams.append("radius", params.radius.toString());
-      if (params.verified) searchParams.append("verified", params.verified);
       if (params.governorate)
         searchParams.append("governorate", params.governorate);
 
