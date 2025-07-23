@@ -368,7 +368,8 @@ export default function UnitsPage() {
                             id={unit._id}
                             title={unit.name || "اسم غير متوفر"}
                             price={unit.pricePerMonth || 0}
-                            size={unit.space || 0}
+                            location={unit.governorate || "الموقع غير محدد"}
+                            address={unit.address || ""}
                             imageUrl={
                               unit.images && unit.images.length > 0
                                 ? unit.images[0]

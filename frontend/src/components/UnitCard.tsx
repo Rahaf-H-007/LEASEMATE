@@ -1,4 +1,4 @@
-'use client';
+"use client";
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -9,7 +9,8 @@ interface UnitCardProps {
   id: string;
   title: string;
   price: number;
-  size: number;
+  location: string;
+  address: string;
   imageUrl: string;
   available: boolean;
   isVerified: boolean;
@@ -19,7 +20,8 @@ const UnitCard: React.FC<UnitCardProps> = ({
   id,
   title,
   price,
-  size,
+  location,
+  address,
   imageUrl,
   available,
   isVerified,
@@ -56,9 +58,10 @@ const UnitCard: React.FC<UnitCardProps> = ({
         <h3 className="text-xl font-bold text-gray-900 dark:text-black mb-2 text-right">
           {title}
         </h3>
-        <p className="text-gray-600 dark:text-black text-sm mb-4 text-right">
-          {size} متر
-        </p>
+        <div className="text-gray-600 dark:text-black text-sm mb-4 text-right space-y-1">
+          <p className="font-medium">{location}</p>
+          {address && <p className="text-xs opacity-80">{address}</p>}
+        </div>
         <div className="flex justify-between items-center mb-4">
           <span
             className={`font-bold text-orange-600 dark:text-orange-400 whitespace-nowrap ${
@@ -78,7 +81,7 @@ const UnitCard: React.FC<UnitCardProps> = ({
           </span>
         </div>
         <button
-          onClick={e => {
+          onClick={(e) => {
             e.preventDefault();
             if (user?.role === "landlord") {
               router.push(`/unit/${id}/manage`);

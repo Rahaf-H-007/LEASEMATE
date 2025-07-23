@@ -324,3 +324,5 @@ export default function AddUnitPage() {
     </main>
   );
 }
+//TODO:check if unverified users can add units
+//TODO:fix image extension and video stuff
