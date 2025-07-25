@@ -72,6 +72,7 @@ export default function AddUnitPage() {
 
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPendingMessage, setShowPendingMessage] = useState(false);
 
   // Check if user is authorized to create units (landlords only)
   if (user && user.role !== "landlord") {
@@ -201,21 +202,7 @@ export default function AddUnitPage() {
 
       console.log("Unit created successfully:", createdUnit);
 
-      // Show success toast
-      toast.success(
-        "تم حفظ بيانات الوحدة بنجاح! سيتم توجيهك إلى الصفحة الرئيسية",
-        {
-          duration: 3000,
-          position: "top-center",
-          style: {
-            background: "#10B981",
-            color: "#fff",
-            fontWeight: "bold",
-            padding: "16px",
-            borderRadius: "8px",
-          },
-        }
-      );
+      setShowPendingMessage(true);
 
       // Reset form after successful submission
       setUnitData({
@@ -244,10 +231,7 @@ export default function AddUnitPage() {
       });
       setErrors({});
 
-      // Redirect to home page after a short delay
-      setTimeout(() => {
-        router.push("/");
-      }, 2000);
+      // لا تعيد التوجيه تلقائياً
     } catch (error) {
       console.error("Error saving unit:", error);
       if (error instanceof Error) {
@@ -284,43 +268,61 @@ export default function AddUnitPage() {
   };
 
   return (
-      <main className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800 py-8 text-gray-900 dark:text-white pt-14">
-        <Navbar/>
-        <Toaster />
-      <div className="max-w-4xl pt-20 mx-auto px-4 sm:px-6 lg:px-8">
-        <header className="mb-10 text-center">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4 font-cairo">
-            إضافة وحدة جديدة
-          </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-200 font-cairo">
-            أدخل تفاصيل الوحدة المراد إضافتها إلى النظام
-          </p>
-        </header>
-
-        <div className="space-y-8">
-          <UnitForm data={unitData} onChange={setUnitData} errors={errors} />
-          <AmenitiesForm
-            data={amenities}
-            onChange={setAmenities}
-            unitType={unitData.type}
-          />
-
-          <div className="flex justify-center pt-8">
+    <main className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:bg-gray-900 dark:to-gray-800 py-8 text-gray-900 dark:text-white pt-14">
+      <Navbar/>
+      <Toaster />
+      {showPendingMessage ? (
+        <div className="flex flex-col items-center justify-center min-h-[60vh]">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-8 text-center max-w-lg">
+            <h2 className="text-2xl font-bold text-orange-600 mb-4">تم إرسال إعلانك بنجاح!</h2>
+            <p className="text-gray-700 dark:text-gray-300 mb-6">
+              إعلانك الآن قيد المراجعة من الأدمن.<br/>
+              سيتم إرسال إشعار لك عند الموافقة أو الرفض.
+            </p>
             <button
-              onClick={handleSaveUnit}
-              disabled={isSubmitting}
-              className={`px-8 py-4 text-white text-lg font-bold rounded-xl shadow-lg transform transition-all duration-200 font-cairo min-w-[200px] ${
-                isSubmitting
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-orange-500 hover:bg-orange-600 hover:shadow-xl hover:scale-105"
-              }`}
-              suppressHydrationWarning
+              className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-semibold mt-4"
+              onClick={() => router.push("/")}
             >
-              {isSubmitting ? "جاري الحفظ..." : "حفظ الوحدة"}
+              العودة للصفحة الرئيسية
             </button>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="max-w-4xl pt-20 mx-auto px-4 sm:px-6 lg:px-8">
+          <header className="mb-10 text-center">
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4 font-cairo">
+              إضافة وحدة جديدة
+            </h1>
+            <p className="text-lg text-gray-600 dark:text-gray-200 font-cairo">
+              أدخل تفاصيل الوحدة المراد إضافتها إلى النظام
+            </p>
+          </header>
+
+          <div className="space-y-8">
+            <UnitForm data={unitData} onChange={setUnitData} errors={errors} />
+            <AmenitiesForm
+              data={amenities}
+              onChange={setAmenities}
+              unitType={unitData.type}
+            />
+
+            <div className="flex justify-center pt-8">
+              <button
+                onClick={handleSaveUnit}
+                disabled={isSubmitting}
+                className={`px-8 py-4 text-white text-lg font-bold rounded-xl shadow-lg transform transition-all duration-200 font-cairo min-w-[200px] ${
+                  isSubmitting
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-orange-500 hover:bg-orange-600 hover:shadow-xl hover:scale-105"
+                }`}
+                suppressHydrationWarning
+              >
+                {isSubmitting ? "جاري الحفظ..." : "حفظ الوحدة"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

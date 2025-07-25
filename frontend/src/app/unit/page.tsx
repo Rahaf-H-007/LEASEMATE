@@ -335,12 +335,12 @@ export default function UnitsPage() {
                 {[...Array(9)].map((_, index) => (
                   <div
                     key={index}
-                    className="bg-white rounded-2xl overflow-hidden shadow-lg animate-pulse"
+                    className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-lg animate-pulse"
                   >
-                    <div className="h-48 bg-gray-300"></div>
+                    <div className="h-48 bg-gray-300 dark:bg-gray-800"></div>
                     <div className="p-4">
-                      <div className="h-4 bg-gray-300 rounded mb-2"></div>
-                      <div className="h-4 bg-gray-300 rounded w-2/3"></div>
+                      <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded mb-2"></div>
+                      <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-2/3"></div>
                     </div>
                   </div>
                 ))}
@@ -350,12 +350,12 @@ export default function UnitsPage() {
             {/* Error State */}
             {error && !loading && (
               <div className="text-center py-8">
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                <div className="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded mb-4">
                   {error}
                 </div>
                 <button
                   onClick={() => window.location.reload()}
-                  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded dark:bg-blue-700 dark:hover:bg-blue-800"
                 >
                   إعادة المحاولة
                 </button>
@@ -367,13 +367,12 @@ export default function UnitsPage() {
               <>
                 {units.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
-                    لا توجد وحدات متاحة حالياً
+                    <span className="text-gray-500 dark:text-gray-400">لا توجد وحدات متاحة حالياً</span>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 dark:bg-gray-900">
                     {units
-                      .filter((unit) => unit.status === "available") // Only show available units
-                      .map((unit) => {
+  .filter((unit) => unit.status === "available" || unit.status === "approved")                      .map((unit) => {
                         // Check if owner is verified (status 'approved' means all verification steps are complete)
                         const isOwnerVerified =
                           typeof unit.ownerId === "object" &&
@@ -381,16 +380,20 @@ export default function UnitsPage() {
                             "approved";
 
                         return (
-                          <UnitCard
+                          <UnitCard 
                             key={unit._id}
                             id={unit._id}
                             title={unit.name || "اسم غير متوفر"}
                             price={unit.pricePerMonth || 0}
                             size={unit.space || 0}
                             imageUrl={
-                              unit.images && unit.images.length > 0
-                                ? unit.images[0]
-                                : "/placeholder-image.jpg"
+                              Array.isArray(unit.images)
+                                ? (
+                                    (unit.images.find(img => typeof img === 'object' && (img as any).status === "approved") as any)?.url ||
+                                    (typeof unit.images[0] === 'object' ? (unit.images[0] as any)?.url : unit.images[0]) ||
+                                    "/fallback.png"
+                                  )
+                                : "/fallback.png"
                             }
                             available={true} // All displayed units are available
                             isVerified={isOwnerVerified}

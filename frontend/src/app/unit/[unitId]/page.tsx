@@ -147,7 +147,7 @@ export default function UnitDetailPage() {
             <ImageSlider
               images={
                 unit?.images && unit.images.length > 0
-                  ? unit.images
+                  ? unit.images.map(img => typeof img === "string" ? img : img.url)
                   : ["/placeholder-image.jpg"]
               }
             />
