@@ -6,8 +6,8 @@ const { validationResult } = require("express-validator");
 const uploadToCloudinary = require("../utils/uploadtoCloudinary");
 const deleteFromCloudinary = require("../utils/deleteFromCloudinary");
 const extractPublicId = require("../utils/extractPublicId");
-const notificationService = require('../services/notification.service');
-const User = require('../models/user.model');
+const notificationService = require("../services/notification.service");
+const User = require("../models/user.model");
 
 const getAllUnits = asyncWrapper(async (req, res) => {
   const {
@@ -20,7 +20,8 @@ const getAllUnits = asyncWrapper(async (req, res) => {
     lat,
     lng,
     radius = 50,
-    verified,
+    governorate,
+
     hasAC,
     hasWifi,
     hasTV,
@@ -55,6 +56,9 @@ const getAllUnits = asyncWrapper(async (req, res) => {
   if (type) {
     filter.type = type;
   }
+  if (governorate && governorate.trim()) {
+    filter.governorate = governorate.trim();
+  }
 
   if (minPrice || maxPrice) {
     filter.pricePerMonth = {};
@@ -69,66 +73,23 @@ const getAllUnits = asyncWrapper(async (req, res) => {
   if (hasKitchenware === "true") filter.hasKitchenware = true;
   if (hasHeating === "true") filter.hasHeating = true;
   if (hasPool === "true") filter.hasPool = true;
-  if (isFurnished === "true") filter.isFurnished = true;
-
+  if (isFurnished === "true" || isFurnished === true) {
+    filter.isFurnished = true;
+  } else if (isFurnished === "false" || isFurnished === false) {
+    filter.isFurnished = false;
+  }
   // Calculate pagination
   const skip = (page - 1) * limit;
 
-  // Helper function to get units with optional verification filter
-  const getUnitsQuery = async (baseFilter) => {
-    if (verified === "true") {
-      // Use aggregation pipeline to filter by verified owners
-      return await Unit.aggregate([
-        { $match: baseFilter },
-        {
-          $lookup: {
-            from: "users",
-            localField: "ownerId",
-            foreignField: "_id",
-            as: "owner",
-          },
-        },
-        {
-          $addFields: {
-            ownerData: { $arrayElemAt: ["$owner", 0] },
-          },
-        },
-        {
-          $match: {
-            "ownerData.verificationStatus.status": "approved",
-          },
-        },
-        {
-          $addFields: {
-            ownerId: "$ownerData",
-          },
-        },
-        {
-          $project: {
-            "ownerId.password": 0,
-            "ownerId.verificationStatus.idData": 0,
-            "ownerId.verificationStatus.uploadedIdUrl": 0,
-            "ownerId.verificationStatus.selfieUrl": 0,
-            owner: 0,
-            ownerData: 0,
-          },
-        },
-        { $sort: { createdAt: -1 } },
-      ]);
-    } else {
-      return await Unit.find(baseFilter)
-        .populate("ownerId", "name phone username verificationStatus")
-        .sort({ createdAt: -1 });
-    }
-  };
-
+  // Get all units with filters applied (all units are from verified landlords)
+  const allUnits = await Unit.find(filter)
+    .populate("ownerId", "name phone username verificationStatus")
+    .sort({ createdAt: -1 });
   let units = [];
   let total = 0;
 
-  // Get all units with filters applied
-  const allUnits = await getUnitsQuery(filter);
+  // If we have user location, sort by proximity (nearby first, then all others)
 
-  // If we have user location and no search term, sort by proximity (nearby first, then all others)
   if (lat && lng && (!search || search.trim() === "")) {
     // Helper function to calculate distance between two points in meters
     const calculateDistance = (lat1, lng1, lat2, lng2) => {
@@ -327,7 +288,9 @@ const deleteUnitImage = asyncWrapper(async (req, res, next) => {
 
 const getMyUnits = asyncWrapper(async (req, res, next) => {
   if (!req.user || !req.user._id) {
-    return next(appError.create("Unauthorized: user not found", 401, httpStatusText.FAIL));
+    return next(
+      appError.create("Unauthorized: user not found", 401, httpStatusText.FAIL)
+    );
   }
   const userId = req.user._id;
   const units = await Unit.find({ ownerId: userId })
@@ -339,55 +302,68 @@ const getMyUnits = asyncWrapper(async (req, res, next) => {
 // جلب كل الشقق التي بها صور قيد المراجعة (pending)
 const getPendingUnitImages = asyncWrapper(async (req, res) => {
   // اجلب كل الشقق التي بها صورة واحدة على الأقل حالتها pending
-  const units = await Unit.find({ 'images.status': 'pending' }, {
-    images: 1,
-    name: 1,
-    ownerId: 1,
-    _id: 1,
-  }).populate('ownerId', 'name phone username');
+  const units = await Unit.find(
+    { "images.status": "pending" },
+    {
+      images: 1,
+      name: 1,
+      ownerId: 1,
+      _id: 1,
+    }
+  ).populate("ownerId", "name phone username");
 
   // لكل شقة، اجلب فقط الصور pending
-  const pendingUnits = units.map(unit => ({
-    unitId: unit._id,
-    unitName: unit.name,
-    owner: unit.ownerId,
-    images: unit.images.filter(img => img.status === 'pending'),
-  })).filter(unit => unit.images.length > 0);
+  const pendingUnits = units
+    .map((unit) => ({
+      unitId: unit._id,
+      unitName: unit.name,
+      owner: unit.ownerId,
+      images: unit.images.filter((img) => img.status === "pending"),
+    }))
+    .filter((unit) => unit.images.length > 0);
 
-  res.status(200).json({ status: httpStatusText.SUCCESS, data: { pendingUnits } });
+  res
+    .status(200)
+    .json({ status: httpStatusText.SUCCESS, data: { pendingUnits } });
 });
 
 // موافقة الأدمن على كل صور الشقة دفعة واحدة
 const approveAllUnitImages = asyncWrapper(async (req, res, next) => {
   const { unitId } = req.body;
-  const unit = await Unit.findById(unitId).populate('ownerId', 'name');
+  const unit = await Unit.findById(unitId).populate("ownerId", "name");
   if (!unit) {
-    return next(appError.create('Unit not found', 404, httpStatusText.FAIL));
+    return next(appError.create("Unit not found", 404, httpStatusText.FAIL));
   }
   let updated = false;
-  unit.images.forEach(img => {
-    if (img.status === 'pending') {
-      img.status = 'approved';
+  unit.images.forEach((img) => {
+    if (img.status === "pending") {
+      img.status = "approved";
       updated = true;
     }
   });
   if (updated) {
-    if (unit.images.length > 0 && unit.images.every(img => img.status === 'approved')) {
-      unit.status = 'available';
-      unit.rejectionReason = '';
+    if (
+      unit.images.length > 0 &&
+      unit.images.every((img) => img.status === "approved")
+    ) {
+      unit.status = "available";
+      unit.rejectionReason = "";
       await unit.save();
 
       // إشعار للمالك
       const notification = await notificationService.createNotification({
         userId: unit.ownerId._id,
-        title: 'تمت الموافقة على إعلانك',
+        title: "تمت الموافقة على إعلانك",
         message: `تمت الموافقة على إعلان وحدتك (${unit.name}) وأصبح الآن ظاهرًا للمستخدمين.`,
-        type: 'GENERAL',
+        type: "GENERAL",
       });
       // إرسال socket إذا متاح
-      const io = req.app.get('io');
+      const io = req.app.get("io");
       if (io) {
-        io.to(unit.ownerId._id.toString()).emit('newNotification', notification);
+        io.to(unit.ownerId._id.toString()).emit(
+          "newNotification",
+          notification
+        );
       }
     } else {
       await unit.save();
@@ -398,34 +374,39 @@ const approveAllUnitImages = asyncWrapper(async (req, res, next) => {
 // رفض الأدمن لكل صور الشقة دفعة واحدة مع سبب
 const rejectAllUnitImages = asyncWrapper(async (req, res, next) => {
   const { unitId, reason } = req.body;
-  const unit = await Unit.findById(unitId).populate('ownerId', 'name');
+  const unit = await Unit.findById(unitId).populate("ownerId", "name");
   if (!unit) {
-    return next(appError.create('Unit not found', 404, httpStatusText.FAIL));
+    return next(appError.create("Unit not found", 404, httpStatusText.FAIL));
   }
   let updated = false;
-  unit.images.forEach(img => {
-    if (img.status === 'pending') {
-      img.status = 'rejected';
+  unit.images.forEach((img) => {
+    if (img.status === "pending") {
+      img.status = "rejected";
       updated = true;
     }
   });
   if (updated) {
-    if (unit.images.every(img => img.status === 'rejected')) {
-      unit.status = 'rejected';
-      unit.rejectionReason = reason || '';
+    if (unit.images.every((img) => img.status === "rejected")) {
+      unit.status = "rejected";
+      unit.rejectionReason = reason || "";
       await unit.save();
 
       // إشعار للمالك
       const notification = await notificationService.createNotification({
         userId: unit.ownerId._id,
-        title: 'تم رفض إعلانك',
-        message: `تم رفض إعلان وحدتك (${unit.name}). السبب: ${reason || 'غير محدد'}. قم بالمحاولة مرة أخرى.`,
-        type: 'GENERAL',
+        title: "تم رفض إعلانك",
+        message: `تم رفض إعلان وحدتك (${unit.name}). السبب: ${
+          reason || "غير محدد"
+        }. قم بالمحاولة مرة أخرى.`,
+        type: "GENERAL",
       });
       // إرسال socket إذا متاح
-      const io = req.app.get('io');
+      const io = req.app.get("io");
       if (io) {
-        io.to(unit.ownerId._id.toString()).emit('newNotification', notification);
+        io.to(unit.ownerId._id.toString()).emit(
+          "newNotification",
+          notification
+        );
       }
     } else {
       await unit.save();
@@ -438,44 +419,46 @@ const rejectAllUnitImages = asyncWrapper(async (req, res, next) => {
 const reviewUnitImage = asyncWrapper(async (req, res, next) => {
   const { unitId, imageUrl } = req.body;
   const { action } = req.query; // 'approve' or 'reject'
-  if (!unitId || !imageUrl || !['approve', 'reject'].includes(action)) {
-    return next(appError.create('بيانات غير مكتملة', 400, httpStatusText.FAIL));
+  if (!unitId || !imageUrl || !["approve", "reject"].includes(action)) {
+    return next(appError.create("بيانات غير مكتملة", 400, httpStatusText.FAIL));
   }
   const unit = await Unit.findById(unitId);
   if (!unit) {
-    return next(appError.create('Unit not found', 404, httpStatusText.FAIL));
+    return next(appError.create("Unit not found", 404, httpStatusText.FAIL));
   }
-  const img = unit.images.find(img => img.url === imageUrl);
+  const img = unit.images.find((img) => img.url === imageUrl);
   if (!img) {
-    return next(appError.create('Image not found', 404, httpStatusText.FAIL));
+    return next(appError.create("Image not found", 404, httpStatusText.FAIL));
   }
-  img.status = action === 'approve' ? 'approved' : 'rejected';
+  img.status = action === "approve" ? "approved" : "rejected";
   await unit.save();
-  res.status(200).json({ status: httpStatusText.SUCCESS, data: { image: img, unitId } });
+  res
+    .status(200)
+    .json({ status: httpStatusText.SUCCESS, data: { image: img, unitId } });
 });
 
 // موافقة الأدمن على الشقة
 const approveUnit = asyncWrapper(async (req, res, next) => {
   const { unitId } = req.body;
-  const unit = await Unit.findById(unitId).populate('ownerId', 'name');
+  const unit = await Unit.findById(unitId).populate("ownerId", "name");
   if (!unit) {
-    return next(appError.create('Unit not found', 404, httpStatusText.FAIL));
+    return next(appError.create("Unit not found", 404, httpStatusText.FAIL));
   }
-  unit.status = 'approved';
-  unit.rejectionReason = '';
+  unit.status = "approved";
+  unit.rejectionReason = "";
   await unit.save();
 
   // إشعار للمالك
   const notification = await notificationService.createNotification({
     userId: unit.ownerId._id,
-    title: 'تمت الموافقة على إعلانك',
+    title: "تمت الموافقة على إعلانك",
     message: `تمت الموافقة على إعلان وحدتك (${unit.name}) وأصبح الآن ظاهرًا للمستخدمين.`,
-    type: 'GENERAL',
+    type: "GENERAL",
   });
   // إرسال socket إذا متاح
-  const io = req.app.get('io');
+  const io = req.app.get("io");
   if (io) {
-    io.to(unit.ownerId._id.toString()).emit('newNotification', notification);
+    io.to(unit.ownerId._id.toString()).emit("newNotification", notification);
   }
 
   res.status(200).json({ status: httpStatusText.SUCCESS, data: { unit } });
@@ -484,25 +467,27 @@ const approveUnit = asyncWrapper(async (req, res, next) => {
 // رفض الأدمن للشقة مع سبب
 const rejectUnit = asyncWrapper(async (req, res, next) => {
   const { unitId, reason } = req.body;
-  const unit = await Unit.findById(unitId).populate('ownerId', 'name');
+  const unit = await Unit.findById(unitId).populate("ownerId", "name");
   if (!unit) {
-    return next(appError.create('Unit not found', 404, httpStatusText.FAIL));
+    return next(appError.create("Unit not found", 404, httpStatusText.FAIL));
   }
-  unit.status = 'rejected';
-  unit.rejectionReason = reason || '';
+  unit.status = "rejected";
+  unit.rejectionReason = reason || "";
   await unit.save();
 
   // إشعار للمالك
   const notification = await notificationService.createNotification({
     userId: unit.ownerId._id,
-    title: 'تم رفض إعلانك',
-    message: `تم رفض إعلان وحدتك (${unit.name}). السبب: ${reason || 'غير محدد'}. قم بالمحاولة مرة أخرى.`,
-    type: 'GENERAL',
+    title: "تم رفض إعلانك",
+    message: `تم رفض إعلان وحدتك (${unit.name}). السبب: ${
+      reason || "غير محدد"
+    }. قم بالمحاولة مرة أخرى.`,
+    type: "GENERAL",
   });
   // إرسال socket إذا متاح
-  const io = req.app.get('io');
+  const io = req.app.get("io");
   if (io) {
-    io.to(unit.ownerId._id.toString()).emit('newNotification', notification);
+    io.to(unit.ownerId._id.toString()).emit("newNotification", notification);
   }
 
   res.status(200).json({ status: httpStatusText.SUCCESS, data: { unit } });
