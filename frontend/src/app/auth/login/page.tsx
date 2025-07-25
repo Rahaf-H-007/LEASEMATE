@@ -21,6 +21,10 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
+      if (user.isBlocked) {
+        router.push('/blocked');
+        return;
+      }
       if (user.role === 'admin') {
         router.push('/admin/dashboard');
       } else if (user.role === 'landlord' && user.verificationStatus && user.verificationStatus.status === 'approved') {
@@ -68,6 +72,16 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       console.log('LOGIN ERROR:', err);
+      // إذا كان الخطأ 401 أو الرسالة تحتوي على 401 أو HTTP error
+      if (
+        err?.status === 401 ||
+        err?.response?.status === 401 ||
+        (typeof err?.message === 'string' && (err.message.includes('401') || err.message.toLowerCase().includes('http error')))
+      ) {
+        setError('بيانات الدخول غير صحيحة. يرجى التأكد من اسم المستخدم أو كلمة المرور.');
+        setIsLoading(false);
+        return;
+      }
       setError(
         err?.message ||
         (err?.errors && err.errors[0]?.msg) ||
