@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     role: { type: String, enum: ['landlord', 'tenant', 'admin'], default: 'tenant' },
     isBlocked: { type: Boolean, default: false },
+    abusiveCommentsCount: { type: Number, default: 0 },
     isDeleted: { type: Boolean, default: false },
     avatarUrl: { type: String },
 

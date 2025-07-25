@@ -28,8 +28,12 @@ const leaseSchema = new mongoose.Schema({
   leasePDF: String, // URL or file path to generated PDF
   status: {
     type: String,
-    enum: ["active", "terminated", "pending", "expired"],
-    default: "active"
+    enum: ["active", "terminated", "pending", "expired", "rejected", ],
+    default: "pending"
+  },
+  rejectionReason: {
+    type: String,
+    default: ""
   }
 });
 

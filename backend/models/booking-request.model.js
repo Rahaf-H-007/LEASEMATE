@@ -12,6 +12,10 @@ const bookingRequestSchema = new mongoose.Schema({
     required: true
   },
   message: String,
+  startDate: Date,
+  endDate: Date,
+  durationMonths: Number,
+  price: Number,
   status: {
     type: String,
     enum: ["pending", "accepted", "rejected"],

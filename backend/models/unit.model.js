@@ -15,7 +15,16 @@ const unitSchema = new mongoose.Schema({
     required: true,
   },
   images: {
-    type: [String],
+    type: [
+      {
+        url: { type: String, required: true },
+        status: {
+          type: String,
+          enum: ["pending", "approved", "rejected"],
+          default: "pending",
+        },
+      },
+    ],
     //TODO: uncomment this when we're almost done
     // required: true
     // validate: [(arr) => arr.length > 0, "At least one image is required"],
@@ -112,8 +121,12 @@ const unitSchema = new mongoose.Schema({
 
   status: {
     type: String,
-    enum: ["available", "booked", "under maintenance"],
-    default: "available",
+    enum: ["pending", "approved", "rejected", "available", "booked", "under maintenance"],
+    default: "pending",
+  },
+  rejectionReason: {
+    type: String,
+    default: '',
   },
 });
 
