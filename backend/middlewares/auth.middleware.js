@@ -24,7 +24,7 @@ const protect = async (req, res, next) => {
 
             if (user.isBlocked) {
                 console.log('User is blocked');
-                return res.status(403).json({ message: 'Your account is blocked' });
+                return res.status(403).json({ message: 'تم حظرك من المنصة بسبب تكرار التعليقات المسيئة. يرجى التواصل مع الإدارة إذا كان هناك خطأ.' });
             }
 
             req.user = user;
