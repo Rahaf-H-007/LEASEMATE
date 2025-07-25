@@ -53,10 +53,10 @@ const UnitCard: React.FC<UnitCardProps> = ({
       )} */}
       </div>
       <div className="p-6">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-black mb-2 text-right">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 text-right">
           {title}
         </h3>
-        <p className="text-gray-600 dark:text-black text-sm mb-4 text-right">
+        <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 text-right">
           {size} متر
         </p>
         <div className="flex justify-between items-center mb-4">
