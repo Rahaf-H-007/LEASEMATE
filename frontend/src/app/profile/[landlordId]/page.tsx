@@ -233,8 +233,12 @@ export default function UserProfilePage() {
                         href={`/unit/${unit._id}`}
                         className="block bg-white/80 dark:bg-gray-800/80 rounded-2xl p-5 shadow-xl border border-orange-100 dark:border-orange-800 hover:shadow-2xl hover:-translate-y-1 hover:border-orange-400 dark:hover:border-orange-400 transition-all duration-200 cursor-pointer group relative overflow-hidden"
                       >
-                        {unit.images && unit.images.length > 0 ? (
-                          <img src={unit.images[0]} alt={unit.name} className="w-full h-32 object-cover rounded-xl mb-3 group-hover:scale-105 transition-transform duration-200" />
+                        {unit.images && unit.images.length > 0 && unit.images[0].url ? (
+                          <img
+                            src={unit.images[0].url}
+                            alt={unit.name}
+                            className="w-full h-32 object-cover rounded-xl mb-3 group-hover:scale-105 transition-transform duration-200"
+                          />
                         ) : (
                           <div className="w-full h-32 bg-orange-50 dark:bg-gray-900 rounded-xl mb-3 flex items-center justify-center text-4xl text-orange-200 dark:text-orange-800">🏠</div>
                         )}
