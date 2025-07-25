@@ -9,7 +9,8 @@ interface UnitCardProps {
   id: string;
   title: string;
   price: number;
-  size: number;
+  location: string;
+  address: string;
   imageUrl: string;
   available: boolean;
   isVerified: boolean;
@@ -19,7 +20,8 @@ const UnitCard: React.FC<UnitCardProps> = ({
   id,
   title,
   price,
-  size,
+ location,
+  address,
   imageUrl,
   available,
   isVerified,
@@ -33,7 +35,7 @@ const UnitCard: React.FC<UnitCardProps> = ({
       className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 group"
       dir="rtl"
     >
-      <div className="relative">
+      <div className="relative bg-gray-100 dark:bg-gray-800">
         <Image
           alt={title}
           className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"
@@ -41,24 +43,15 @@ const UnitCard: React.FC<UnitCardProps> = ({
           width={400}
           height={256}
         />
-        {isVerified && (
-          <div className="absolute top-3 right-3 bg-green-400 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md">
-            موثوق
-          </div>
-        )}
-        {/* {!available && (
-        <div className="absolute top-3 left-3 bg-red-500 text-white text-xs font-medium px-3 py-1.5 rounded-full shadow-md">
-          غير متاح
-        </div>
-      )} */}
       </div>
-      <div className="p-6">
+      <div className="p-6 bg-white dark:bg-gray-900">
         <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 text-right">
           {title}
         </h3>
-        <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 text-right">
-          {size} متر
-        </p>
+        <div className="text-gray-600 dark:text-gray-300 text-sm mb-4 text-right space-y-1">
+          <p className="font-medium">{location}</p>
+          {address && <p className="text-xs opacity-80 dark:opacity-90">{address}</p>}
+        </div>
         <div className="flex justify-between items-center mb-4">
           <span
             className={`font-bold text-orange-600 dark:text-orange-400 whitespace-nowrap ${
@@ -78,7 +71,7 @@ const UnitCard: React.FC<UnitCardProps> = ({
           </span>
         </div>
         <button
-          onClick={e => {
+          onClick={(e) => {
             e.preventDefault();
             if (user?.role === "landlord") {
               router.push(`/unit/${id}/manage`);

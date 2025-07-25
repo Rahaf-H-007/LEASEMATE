@@ -1,3 +1,7 @@
+import React from "react";
+import toast from "react-hot-toast";
+import { governorateCities } from "@/data/governorates";
+import { useMemo } from "react";
 interface UnitData {
   name: string;
   type: string;
@@ -22,6 +26,15 @@ interface UnitFormProps {
 }
 
 export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
+  console.log("UnitForm render - data.governorate:", data.governorate, "data.city:", data.city);
+
+  const cities = useMemo(() => {
+    const citiesList = governorateCities[data.governorate] || [];
+    console.log("Cities for governorate:", data.governorate, ":", citiesList);
+    console.log("Available governorates:", Object.keys(governorateCities));
+    return citiesList;
+  }, [data.governorate]);
+
   const handleInputChange = (
     field: string,
     value: string | boolean | File[]
@@ -33,12 +46,59 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
       updatedData.isFurnishedSelected = true;
     }
 
+    console.log("handleInputChange called:", field, value, updatedData);
     onChange(updatedData);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    handleInputChange("images", [...data.images, ...files]);
+    const currentImages = data.images.length;
+    const maxImages = 5;
+
+    // Validate file types
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    const invalidFiles = files.filter(
+      (file) => !allowedTypes.includes(file.type)
+    );
+
+    if (invalidFiles.length > 0) {
+      // Show error for invalid file types
+      const invalidFileNames = invalidFiles.map((f) => f.name).join(", ");
+      toast.error(
+        `الملفات التالية غير مدعومة: ${invalidFileNames}\nيُسمح فقط بملفات الصور (JPEG, JPG, PNG, WebP)`,
+        {
+          duration: 4000,
+          position: "top-center",
+          style: {
+            background: "#EF4444",
+            color: "#fff",
+            fontWeight: "bold",
+            padding: "16px",
+            borderRadius: "8px",
+          },
+        }
+      );
+      e.target.value = ""; // Reset input
+      return;
+    }
+
+    // Filter out invalid files and keep only valid ones
+    const validFiles = files.filter((file) => allowedTypes.includes(file.type));
+
+    // Check if adding new files would exceed the limit
+    if (currentImages + validFiles.length > maxImages) {
+      const allowedFiles = maxImages - currentImages;
+      if (allowedFiles > 0) {
+        // Take only first 5 files
+        const limitedFiles = validFiles.slice(0, allowedFiles);
+        handleInputChange("images", [...data.images, ...limitedFiles]);
+      }
+    } else {
+      handleInputChange("images", [...data.images, ...validFiles]);
+    }
+
+    // Reset the input value to allow selecting the same files again
+    e.target.value = "";
   };
 
   const removeImage = (index: number) => {
@@ -66,33 +126,58 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
       <div className="mb-8">
         <label className="block text-sm font-bold text-gray-700 font-cairo mb-3">
           صور الوحدة <span className="text-red-500">*</span>
+          <span className="text-gray-500 font-normal">(5 صور كحد أقصى)</span>
         </label>
         <div
-          className={`border-2 border-dashed rounded-xl p-6 hover:border-orange-400 transition-colors ${
-            errors.images ? "border-red-500 bg-red-50" : "border-gray-300"
+          className={`border-2 border-dashed rounded-xl p-6 transition-colors ${
+            data.images.length >= 5
+              ? "border-gray-200 bg-gray-50"
+              : errors.images
+              ? "border-red-500 bg-red-50"
+              : "border-gray-300 hover:border-orange-400"
           }`}
         >
           <input
             type="file"
             multiple
-            accept="image/*"
+            accept="image/jpeg,image/jpg,image/png,image/webp"
             onChange={handleImageUpload}
             className="hidden"
             id="image-upload"
+            disabled={data.images.length >= 5}
             suppressHydrationWarning
           />
           <label
             htmlFor="image-upload"
-            className="cursor-pointer flex flex-col items-center space-y-2"
+            className={`${
+              data.images.length >= 5 ? "cursor-not-allowed" : "cursor-pointer"
+            } flex flex-col items-center space-y-2`}
           >
-            <div className="text-4xl text-gray-400">📸</div>
+             <div
+              className={`text-4xl ${
+                data.images.length >= 5 ? "text-gray-300" : "text-gray-400"
+              }`}
+            >
+              {data.images.length >= 5 ? "✅" : "📸"}
+            </div>
             <div className="text-center">
-              <p className="text-gray-600 font-cairo font-medium">
-                اضغط لرفع الصور
+               <p
+                className={`font-cairo font-medium ${
+                  data.images.length >= 5 ? "text-gray-400" : "text-gray-600"
+                }`}
+              >
+                {data.images.length >= 5
+                  ? "تم الوصول للحد الأقصى"
+                  : "اضغط لرفع الصور"}
               </p>
               <p className="text-gray-400 text-sm font-cairo">
-                PNG, JPG أو JPEG
+                PNG, JPG, JPEG أو WebP
               </p>
+               {data.images.length > 0 && (
+                <p className="text-orange-600 text-sm font-cairo font-medium">
+                  تم رفع {data.images.length} من 5 صور
+                </p>
+              )}
             </div>
           </label>
         </div>
@@ -190,7 +275,7 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
           rows={4}
           value={data.description}
           onChange={(e) => handleInputChange("description", e.target.value)}
-            suppressHydrationWarning
+          suppressHydrationWarning
         />
         <ErrorMessage error={errors.description} />
       </div>
@@ -314,43 +399,59 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
         <div className="space-y-3">
           <label
             className="block text-sm font-bold text-gray-700 font-cairo"
-            htmlFor="city"
+            htmlFor="governorate"
           >
-            المدينة <span className="text-red-500">*</span>
+            المحافظة <span className="text-red-500">*</span>
           </label>
-          <input
+          <select
             className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 font-cairo text-right bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
-              errors.city ? "border-red-500" : "border-gray-300"
+              errors.governorate ? "border-red-500" : "border-gray-300"
             }`}
-            id="city"
-            placeholder="القاهرة"
-            type="text"
-            value={data.city}
-            onChange={(e) => handleInputChange("city", e.target.value)}
+            id="governorate"
+            value={data.governorate}
+            onChange={(e) => {
+              console.log("Governorate changed to:", e.target.value);
+              const newGovernorate = e.target.value;
+              const updatedData = { ...data, governorate: newGovernorate, city: "" };
+              onChange(updatedData);
+            }}
             suppressHydrationWarning
-          />
-          <ErrorMessage error={errors.city} />
+          >
+            <option value="">اختر المحافظة</option>
+            {Object.keys(governorateCities).sort().map((gov) => (
+              <option key={gov} value={gov}>{gov}</option>
+            ))}
+          </select>
+          <ErrorMessage error={errors.governorate} />
         </div>
 
         <div className="space-y-3">
           <label
             className="block text-sm font-bold text-gray-700 font-cairo"
-            htmlFor="governorate"
+            htmlFor="city"
           >
-            المحافظة <span className="text-red-500">*</span>
+            المدينة <span className="text-red-500">*</span>
           </label>
-          <input
+          <select
             className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 font-cairo text-right bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
-              errors.governorate ? "border-red-500" : "border-gray-300"
+              errors.city ? "border-red-500" : "border-gray-300"
             }`}
-            id="governorate"
-            placeholder="القاهرة"
-            type="text"
-            value={data.governorate}
-            onChange={(e) => handleInputChange("governorate", e.target.value)}
+            id="city"
+            value={data.city}
+            onChange={(e) => {
+              console.log("City changed to:", e.target.value);
+              const updatedData = { ...data, city: e.target.value };
+              onChange(updatedData);
+            }}
+            disabled={!data.governorate || cities.length === 0}
             suppressHydrationWarning
-          />
-          <ErrorMessage error={errors.governorate} />
+          >
+            <option value="">{!data.governorate ? "اختر المحافظة أولاً" : cities.length === 0 ? "لا توجد مدن متاحة" : "اختر المدينة"}</option>
+            {cities.map((city) => (
+              <option key={city} value={city}>{city}</option>
+            ))}
+          </select>
+          <ErrorMessage error={errors.city} />
         </div>
 
         <div className="space-y-3">
