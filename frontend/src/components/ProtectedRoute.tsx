@@ -16,6 +16,8 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
   useEffect(() => {
     if (!isLoading && !user) {
       router.push('/auth/login');
+    } else if (!isLoading && user && user.isBlocked) {
+      router.push('/blocked');
     } else if (!isLoading && user && allowedRoles && !allowedRoles.includes(user.role)) {
       router.push('/dashboard');
     }
@@ -30,6 +32,10 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
   }
 
   if (!user) {
+    return null;
+  }
+
+  if (user && user.isBlocked) {
     return null;
   }
 
