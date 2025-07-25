@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { apiService } from "@/services/api";
 import toast from "react-hot-toast";
 import Link from 'next/link';
+import Modal from "react-modal";
 
 interface Manager {
   name: string;
@@ -35,8 +36,52 @@ const RentSidebarCard: React.FC<RentSidebarCardProps> = ({
   const [requested, setRequested] = useState(false);
   // Add a state for success feedback
   const [success, setSuccess] = useState(false);
+  const [alreadyRequested, setAlreadyRequested] = useState(false);
+  const [alreadyReason, setAlreadyReason] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [durationMonths, setDurationMonths] = useState(1);
+  const [startDate, setStartDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split("T")[0];
+  });
+  const [endDate, setEndDate] = useState("");
+  const [calculatedPrice, setCalculatedPrice] = useState(rent);
 
-  const handleInquireClick = async () => {
+  useEffect(() => {
+    const checkExistingRequest = async () => {
+      if (!user || !unitId) return;
+      try {
+        const res = await apiService.getMyBookingRequestsByUnit(unitId) as { data?: { requests?: any[] } };
+        const requests = res.data?.requests || [];
+        // ابحث عن طلب حجز غير مرفوض
+        const activeRequest = requests.find((r: any) => r.status !== "rejected");
+        if (activeRequest) {
+          setAlreadyRequested(true);
+          setAlreadyReason("تم التقديم بالفعل");
+        } else {
+          setAlreadyRequested(false);
+          setAlreadyReason("");
+        }
+      } catch (err) {
+        setAlreadyRequested(false);
+        setAlreadyReason("");
+      }
+    };
+    checkExistingRequest();
+  }, [user, unitId]);
+
+  // حساب تاريخ النهاية تلقائياً عند تغيير المدة أو تاريخ البداية
+  useEffect(() => {
+    if (startDate && durationMonths) {
+      const start = new Date(startDate);
+      const end = new Date(start);
+      end.setMonth(end.getMonth() + Number(durationMonths));
+      setEndDate(end.toISOString().split("T")[0]);
+      setCalculatedPrice(rent * Number(durationMonths));
+    }
+  }, [startDate, durationMonths, rent]);
+
+  const handleInquireClick = () => {
     if (!user) {
       router.push("/auth/login");
       return;
@@ -46,20 +91,24 @@ const RentSidebarCard: React.FC<RentSidebarCardProps> = ({
       router.push("/auth/verification");
       return;
     }
-    
-    console.log("=== RENT SIDEBAR CARD DEBUG ===");
-    console.log("User:", user);
-    console.log("UnitId:", unitId);
-    console.log("User verification status:", user.verificationStatus?.status);
-    console.log("=================================");
-    
+    setShowModal(true);
+  };
+
+  const handleModalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
     try {
-      const result = await apiService.sendBookingRequest(unitId);
-      console.log("Booking request result:", result);
+      // إرسال الطلب مع البيانات الجديدة
+      const result = await apiService.sendBookingRequest(unitId, {
+        startDate,
+        endDate,
+        durationMonths,
+        price: calculatedPrice,
+      });
       toast.success("تم إرسال طلب الحجز بنجاح! سيتم التواصل معك قريباً.");
       setRequested(true);
-      setSuccess(true); // set success state
+      setSuccess(true);
+      setShowModal(false);
       if (onBookingSuccess) onBookingSuccess();
     } catch (err: any) {
       console.error("Booking request error:", err);
@@ -84,9 +133,9 @@ const RentSidebarCard: React.FC<RentSidebarCardProps> = ({
         className={`w-full text-lg font-bold py-4 px-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 active:translate-y-0 focus:outline-none focus:ring-4 focus:ring-orange-300 disabled:opacity-60 disabled:cursor-not-allowed 
           ${success ? 'bg-green-500 hover:bg-green-600' : 'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white'}`}
         onClick={handleInquireClick}
-        disabled={loading || requested}
+        disabled={loading || requested || alreadyRequested}
       >
-        {loading ? "جاري الإرسال..." : success ? "تم إرسال الطلب" : (
+        {loading ? "جاري الإرسال..." : alreadyRequested ? alreadyReason : success ? "تم إرسال الطلب" : (
           <span className="flex items-center justify-center gap-2">
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
               <path
@@ -99,6 +148,72 @@ const RentSidebarCard: React.FC<RentSidebarCardProps> = ({
           </span>
         )}
       </button>
+
+      {/* مودال اختيار مدة الإيجار */}
+      <Modal
+        isOpen={showModal}
+        onRequestClose={() => setShowModal(false)}
+        className="fixed inset-0 flex items-center justify-center z-50"
+        overlayClassName="fixed inset-0 bg-black bg-opacity-40 z-40"
+        ariaHideApp={false}
+      >
+        <form onSubmit={handleModalSubmit} className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-8 w-full max-w-md relative">
+          <button
+            type="button"
+            className="absolute top-3 left-3 text-gray-500 hover:text-red-500 dark:hover:text-red-400 text-2xl"
+            onClick={() => setShowModal(false)}
+            aria-label="إغلاق"
+          >
+            ×
+          </button>
+          <h2 className="text-2xl font-bold mb-4 text-orange-600 dark:text-orange-400 text-center">حدد مدة الإيجار</h2>
+          <div className="mb-4">
+            <label className="block mb-1 font-medium text-gray-700 dark:text-gray-200">تاريخ البداية</label>
+            <input
+              type="date"
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+              value={startDate}
+              min={new Date().toISOString().split("T")[0]}
+              onChange={e => setStartDate(e.target.value)}
+              required
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block mb-1 font-medium text-gray-700 dark:text-gray-200">مدة الإيجار (بالشهور)</label>
+            <input
+              type="number"
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+              value={durationMonths}
+              min={1}
+              max={36}
+              onChange={e => setDurationMonths(Number(e.target.value))}
+              required
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block mb-1 font-medium text-gray-700 dark:text-gray-200">تاريخ النهاية</label>
+            <input
+              type="text"
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white bg-gray-100"
+              value={endDate}
+              readOnly
+            />
+          </div>
+          <div className="mb-6">
+            <label className="block mb-1 font-medium text-gray-700 dark:text-gray-200">السعر الإجمالي</label>
+            <div className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-800 text-lg font-bold text-orange-700 dark:text-white">
+              {calculatedPrice.toLocaleString()} جنيه مصري
+            </div>
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-orange-500 hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-700 text-white font-bold py-3 px-4 rounded-lg text-lg transition-colors"
+            disabled={loading}
+          >
+            {loading ? "جاري الإرسال..." : "تأكيد الطلب"}
+          </button>
+        </form>
+      </Modal>
 
       <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-800">
         <h4 className="text-gray-800 dark:text-white text-lg font-bold mb-4 flex items-center gap-2">
