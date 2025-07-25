@@ -1,12 +1,14 @@
 "use client";
 import React, { useState } from "react";
+import { egyptianGovernorates } from "../data/governorates";
 
 export type FilterValues = {
   price: string;
   type: string;
   furnishing: string;
   amenities: string[];
-  verified: boolean;
+
+  governorate: string;
 };
 
 interface FilterSidebarProps {
@@ -21,7 +23,6 @@ const amenityOptions = [
   { value: "hasKitchenware", label: "أدوات مطبخ" },
   { value: "hasHeating", label: "تدفئة" },
   { value: "hasPool", label: "مسبح" },
-  { value: "isFurnished", label: "مفروش" },
 ];
 
 const FilterSidebar: React.FC<FilterSidebarProps> = ({ values, onSubmit }) => {
@@ -31,10 +32,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ values, onSubmit }) => {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value, type } = e.target;
-    if (type === "checkbox" && name === "verified") {
-      const checked = (e.target as HTMLInputElement).checked;
-      setLocal((prev) => ({ ...prev, verified: checked }));
-    } else if (type === "checkbox" && name.startsWith("amenity-")) {
+    if (type === "checkbox" && name.startsWith("amenity-")) {
       const amenity = value;
       setLocal((prev) => {
         const exists = prev.amenities.includes(amenity);
@@ -56,7 +54,11 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ values, onSubmit }) => {
   };
 
   return (
-    <form dir="rtl" className="space-y-6 bg-white dark:bg-gray-900 rounded-2xl p-4" onSubmit={handleSubmit}>
+    <form
+      dir="rtl"
+      className="space-y-6 bg-white dark:bg-gray-900 rounded-2xl p-4"
+      onSubmit={handleSubmit}
+    >
       <h2 className="text-[var(--dark-brown)] dark:text-white text-2xl font-bold leading-tight tracking-tight mb-6 text-right">
         الفلاتر
       </h2>
@@ -122,6 +124,27 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ values, onSubmit }) => {
       </div>
       <div>
         <label
+          className="text-[var(--dark-brown)] text-base font-medium"
+          htmlFor="governorate"
+        >
+          المحافظة
+        </label>
+        <select
+          className="form-select mt-2 w-full rounded-lg text-[var(--dark-brown)] dark:text-white border border-[var(--light-gray)] bg-[var(--eggshell)] dark:bg-gray-800 h-12 px-4 text-base font-normal"
+          id="governorate"
+          name="governorate"
+          value={local.governorate}
+          onChange={handleChange}
+        >
+          {egyptianGovernorates.map((gov) => (
+            <option key={gov.value} value={gov.value}>
+              {gov.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label
           className="text-[var(--dark-brown)] dark:text-white text-base font-medium"
           htmlFor="furnishing-status"
         >
@@ -161,26 +184,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ values, onSubmit }) => {
           ))}
         </div>
       </div>
-      <div className="flex items-center justify-between pt-4">
-        <label
-          className="text-[var(--dark-brown)] dark:text-white text-base font-medium"
-          htmlFor="verified-only"
-        >
-          موثوق فقط
-        </label>
-        <label className="relative inline-flex h-8 w-14 cursor-pointer items-center">
-          <input
-            className="sr-only peer"
-            id="verified-only"
-            name="verified"
-            type="checkbox"
-            checked={local.verified}
-            onChange={handleChange}
-          />
-          <div className="w-full h-full bg-gray-300 dark:bg-gray-800 rounded-full peer-checked:bg-gradient-to-r peer-checked:from-orange-400 peer-checked:to-orange-600 transition-all duration-300 shadow-inner"></div>
-          <div className="absolute top-1 left-1 h-6 w-6 rounded-full bg-white dark:bg-gray-900 transition-all duration-300 peer-checked:translate-x-6 shadow-lg border border-gray-200 dark:border-gray-700 peer-checked:border-orange-200"></div>
-        </label>
-      </div>
+
       <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
         <button
           type="submit"
