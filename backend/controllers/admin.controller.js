@@ -71,8 +71,36 @@ const updateVerificationStatus = async (req, res) => {
   }
 };
 
+// Get users with more than 3 abusive comments
+const getAbusiveUsers = async (req, res) => {
+  try {
+    const users = await User.find({ abusiveCommentsCount: { $gt: 3 } }).select('-password').sort({ abusiveCommentsCount: -1 });
+    res.json({ users });
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching abusive users" });
+  }
+};
+
+// Block a user
+const blockUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    user.isBlocked = true;
+    await user.save();
+    res.json({ message: "User has been blocked successfully." });
+  } catch (error) {
+    res.status(500).json({ message: "Error blocking user" });
+  }
+};
+
 module.exports = {
   adminLogin,
   getUsers,
   updateVerificationStatus,
+  getAbusiveUsers,
+  blockUser,
 };
