@@ -129,7 +129,7 @@ export default function LeasesPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
       <Navbar />
-      <div className="max-w-4xl mx-auto pt-32 px-4">
+      <div className="max-w-7xl mx-auto pt-32 px-4">
         <h1 className="text-3xl font-bold mb-8 text-orange-600 dark:text-orange-400 text-center">
           عقودي
         </h1>
@@ -143,17 +143,17 @@ export default function LeasesPage() {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto rounded-xl shadow bg-white dark:bg-gray-900">
-              <table className="min-w-full text-right">
+            <div className="rounded-xl shadow bg-white dark:bg-gray-900">
+              <table className="w-full text-right">
                 <thead>
-                  <tr className="bg-orange-100 dark:bg-orange-800 text-orange-700 dark:text-orange-200">
-                    <th className="py-3 px-4 dark:text-white">الوحدة</th>
-                    <th className="py-3 px-4 dark:text-white">المالك</th>
-                    <th className="py-3 px-4 dark:text-white">المستأجر</th>
-                    <th className="py-3 px-4 dark:text-white">تاريخ البداية</th>
-                    <th className="py-3 px-4 dark:text-white">تاريخ النهاية</th>
-                    <th className="py-3 px-4 dark:text-white">المبلغ الإجمالي</th>
-                    <th className="py-3 px-4 dark:text-white">تفاصيل العقد</th>
+                  <tr className="bg-orange-500 text-white">
+                    <th className="py-4 px-6 font-bold text-lg">الوحدة</th>
+                    <th className="py-4 px-6 font-bold text-lg">المالك</th>
+                    <th className="py-4 px-6 font-bold text-lg">المستأجر</th>
+                    <th className="py-4 px-6 font-bold text-lg">تاريخ البداية</th>
+                    <th className="py-4 px-6 font-bold text-lg">تاريخ النهاية</th>
+                    <th className="py-4 px-6 font-bold text-lg">المبلغ الإجمالي</th>
+                    <th className="py-4 px-6 font-bold text-lg">تفاصيل العقد</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -175,34 +175,34 @@ export default function LeasesPage() {
                     return (
                       <tr
                         key={lease._id}
-                        className="border-b border-gray-200 dark:border-gray-800"
+                        className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
                       >
-                        <td className="py-2 px-4 font-semibold dark:text-white">
+                        <td className="py-4 px-6 font-semibold text-gray-900 dark:text-white text-lg">
                           {lease.unitId?.name}
                         </td>
-                        <td className="py-2 px-4 dark:text-white">{lease.landlordId?.name}</td>
-                        <td className="py-2 px-4 dark:text-white">{lease.tenantId?.name}</td>
-                        <td className="py-2 px-4 dark:text-white">
+                        <td className="py-4 px-6 text-gray-900 dark:text-white text-lg">{lease.landlordId?.name}</td>
+                        <td className="py-4 px-6 text-gray-900 dark:text-white text-lg">{lease.tenantId?.name}</td>
+                        <td className="py-4 px-6 text-gray-900 dark:text-white text-lg">
                           {lease.startDate ? new Date(lease.startDate).toLocaleDateString() : "-"}
                         </td>
-                        <td className="py-2 px-4 dark:text-white">
+                        <td className="py-4 px-6 text-gray-900 dark:text-white text-lg">
                           {lease.endDate ? new Date(lease.endDate).toLocaleDateString() : "-"}
                         </td>
-                        <td className="py-2 px-4 dark:text-white">
+                        <td className="py-4 px-6 text-gray-900 dark:text-white text-lg">
                           {totalAmount !== "-" ? totalAmount.toLocaleString() + " جنيه" : "-"}
                         </td>
-                        <td className="py-2 px-4 dark:text-white">
+                        <td className="py-4 px-6">
                           {user?.role === "landlord" ? (
                             <button
-                              className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-2 font-semibold flex items-center gap-2 shadow transition-all duration-200"
+                              className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-semibold transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 whitespace-nowrap"
                               onClick={() => handleView(lease._id)}
                             >
                               مراجعة العقد وتحميله
                             </button>
                           ) : (
-                            <div className="flex flex-wrap gap-2 items-center justify-end">
+                            <div className="flex gap-2 flex-nowrap">
                               <button
-                                className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-2  font-semibold flex items-center gap-2 shadow transition-all duration-200"
+                                className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-semibold transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 whitespace-nowrap"
                                 onClick={() => handleView(lease._id)}
                               >
                                 مراجعة العقد وتحميله
@@ -210,14 +210,14 @@ export default function LeasesPage() {
                               {lease.status === "pending" && (
                                 <>
                                   <button
-                                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-full font-semibold shadow transition-all duration-200"
+                                    className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-semibold transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 whitespace-nowrap"
                                     onClick={() => handleAccept(lease._id)}
                                   >
                                     قبول العقد
                                   </button>
                                   {(user?.role as string) === "landlord" ? (
                                     <button
-                                      className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full font-semibold shadow transition-all duration-200"
+                                      className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg font-semibold transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 whitespace-nowrap"
                                       onClick={() => {
                                         toast.custom(
                                           (t) => (
@@ -342,7 +342,7 @@ export default function LeasesPage() {
                                     </button>
                                   ) : (
                                     <button
-                                      className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full font-semibold shadow transition-all duration-200"
+                                      className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg font-semibold transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 whitespace-nowrap"
                                       onClick={() => openRejectModal(lease._id)}
                                     >
                                       رفض العقد
