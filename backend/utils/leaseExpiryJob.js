@@ -55,6 +55,9 @@ const landlordReviewLink = `/leave-review?leaseId=${lease._id}&revieweeId=${leas
 
         lease.status = "expired";
         await lease.save();
+        // إعادة الوحدة إلى متاحة إذا انتهى العقد
+        const Unit = require("../models/unit.model");
+        await Unit.findByIdAndUpdate(lease.unitId, { status: "available" });
 
         console.log("✅ Lease expired, notifications sent for lease:", lease._id);
       }
