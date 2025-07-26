@@ -59,7 +59,7 @@ exports.createRequest = async (req, res) => {
           senderId: req.user._id,
           userId: unit.ownerId,
           title: 'طلب صيانة جديد',
-          message: `لديك طلب صيانة جديد من المستأجر: ${title}`,
+          message: `لديك طلب صيانة جديد من المستأجر للوحدة ${unit?.name || ''}`,
           type: 'MAINTENANCE_REQUEST',
           maintenanceRequestId: request._id,
           link: `/dashboard/maintenance-requests`
@@ -69,7 +69,7 @@ exports.createRequest = async (req, res) => {
           senderId: req.user._id,
           userId: unit.ownerId,
           title: 'طلب صيانة جديد',
-          message: `لديك طلب صيانة جديد من المستأجر`,
+          message: `لديك طلب صيانة جديد من المستأجر للوحدة ${unit?.name || ''} الخاصة بك`,
           type: 'MAINTENANCE_REQUEST',
           maintenanceRequestId: request._id,
           link: `/dashboard/maintenance-requests`
@@ -175,11 +175,12 @@ exports.updateRequestStatus = async (req, res) => {
                         status === 'in progress' ? 'جاري التنفيذ' : 'تم الحل';
       
       console.log('📧 Creating notification for tenant:', request.tenantId);
+      const unit = await Unit.findById(request.unitId);
       const notification = await notificationService.createNotification({
         senderId: req.user._id,
         userId: request.tenantId,
         title: 'تحديث طلب الصيانة',
-        message: `تم تحديث حالة طلب الصيانة "${request.title}" إلى: ${statusText}`,
+        message: `تم تحديث حالة طلب الصيانة للوحدة ${unit?.name || ''} "${request.title}" إلى: ${statusText}`,
         type: 'MAINTENANCE_UPDATE',
         maintenanceRequestId: request._id,
         link: `/dashboard/maintenance-requests`
