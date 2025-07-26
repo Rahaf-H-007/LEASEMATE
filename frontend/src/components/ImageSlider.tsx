@@ -2,11 +2,20 @@ import React, { useState } from "react";
 // import { ChevronLeft, ChevronRight } from '@mui/icons-material'; // Uncomment if using MUI icons
 
 interface ImageSliderProps {
-  images: string[]; // expects Cloudinary URLs from props
+  images: Array<{
+    url: string;
+    status: "pending" | "approved" | "rejected";
+  }> | string[]; // supports both new object format and legacy string format
 }
 
 const ImageSlider: React.FC<ImageSliderProps> = ({ images }) => {
   const [current, setCurrent] = useState(0);
+  
+  // Helper function to get image URL
+  const getImageUrl = (image: any) => {
+    return typeof image === 'string' ? image : image.url;
+  };
+  
   const goToPrev = () =>
     setCurrent((prev) => (prev === 0 ? images.length - 1 : prev - 1));
   const goToNext = () =>
@@ -16,7 +25,7 @@ const ImageSlider: React.FC<ImageSliderProps> = ({ images }) => {
     <div
       className="relative group rounded-2xl min-h-[320px] md:min-h-[480px] overflow-hidden flex flex-col justify-end bg-cover bg-center"
       style={{
-        backgroundImage: `linear-gradient(0deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 25%), url('${images[current]}')`,
+        backgroundImage: `linear-gradient(0deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 25%), url('${getImageUrl(images[current])}')`,
       }}
     >
       <div className="absolute inset-0 flex items-center justify-between px-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
