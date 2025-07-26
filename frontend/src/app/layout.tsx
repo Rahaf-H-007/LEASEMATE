@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { NotificationsProvider } from "@/contexts/NotificationsContext";
+import { MessagesProvider } from "@/contexts/MessagesContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -42,7 +43,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           <AuthProvider>
             <NotificationsProvider>
+              <MessagesProvider>
                 {children}
+              </MessagesProvider>
             </NotificationsProvider>
           </AuthProvider>
         </ThemeProvider>
