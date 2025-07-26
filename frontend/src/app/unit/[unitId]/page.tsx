@@ -10,10 +10,12 @@ import { apiService, Unit } from "../../../services/api";
 import { MessageCircle } from "lucide-react";
 import ChatBox from "../../../components/ChatBox";
 import { useAuth } from '../../../contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
 export default function UnitDetailPage() {
   const params = useParams();
   const unitId = params.unitId as string;
+  const router = useRouter();
 
   const [unit, setUnit] = useState<Unit | null>(null);
   const [loading, setLoading] = useState(true);
@@ -144,9 +146,35 @@ export default function UnitDetailPage() {
   const ownerInfo = typeof unit.ownerId === "object" ? unit.ownerId : null;
 
   const isTenant = user && user.role === 'tenant' && user._id !== ownerInfo?._id;
-  // when press on chat button open the chat but don't save it at database untill there is a message
-  const handleOpenChat = () => {
-    setShowChat(true);
+  
+  // التحقق من وجود محادثة سابقة وفتح الشات المناسب
+  const handleOpenChat = async () => {
+    if (!user || !ownerInfo || !unit) return;
+    
+    try {
+      setChatLoading(true);
+      
+      // التحقق من وجود محادثة سابقة
+      const chatCheck = await apiService.checkChatExists(
+        user._id,
+        ownerInfo._id,
+        unit._id
+      );
+      
+      if (chatCheck.exists && chatCheck.hasMessages) {
+        // إذا وجدت محادثة سابقة مع رسائل، انتقل إلى صفحة الشاتات وافتح المحادثة
+        router.push(`/dashboard/messages?chatId=${chatCheck.chatId}`);
+      } else {
+        // إذا لم توجد محادثة أو كانت فارغة، افتح شات بوكس فارغ
+        setShowChat(true);
+      }
+    } catch (error) {
+      console.error('Error checking chat existence:', error);
+      // في حالة الخطأ، افتح شات بوكس فارغ
+      setShowChat(true);
+    } finally {
+      setChatLoading(false);
+    }
   };
 
   return (
@@ -209,15 +237,20 @@ export default function UnitDetailPage() {
               <div className="fixed bottom-6 right-6 z-50">
                 <button
                   onClick={handleOpenChat}
-                  className="fixed bottom-8 right-8 z-50 bg-orange-500 hover:bg-orange-600 text-white rounded-full p-4 shadow-lg flex items-center justify-center group"
+                  disabled={chatLoading}
+                  className="fixed bottom-8 right-8 z-50 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white rounded-full p-4 shadow-lg flex items-center justify-center group transition-all duration-200"
                   aria-label="Chat with owner"
                 >
-                  <MessageCircle className="w-7 h-7" />
+                  {chatLoading ? (
+                    <div className="w-7 h-7 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <MessageCircle className="w-7 h-7" />
+                  )}
                   <span
                     className="absolute right-16 bottom-1/2 translate-y-1/2 bg-orange-600 text-white font-bold px-4 py-2 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 pointer-events-none whitespace-nowrap"
                     style={{ minWidth: 'max-content' }}
                   >
-                    التواصل مع المالك
+                    {chatLoading ? 'جاري التحقق...' : 'التواصل مع المالك'}
                   </span>
                 </button>
               </div>
