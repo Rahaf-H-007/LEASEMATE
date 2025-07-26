@@ -6,27 +6,15 @@ exports.createNotification = async (data) => {
   return await notification.save();
 };
 
-// Get paginated notifications for a specific user
-exports.getUserNotifications = async (userId, limit = 50, page = 1) => {
-  console.log('🔍 Fetching notifications for userId:', userId);
-  
-  const total = await Notification.countDocuments({ userId });
-  console.log('📊 Total notifications found:', total);
-
+// Get all notifications for a specific user
+exports.getUserNotifications = async (userId) => {
   const notifications = await Notification.find({ userId })
-    .populate('senderId', 'name avatarUrl') // optional: adds sender's name/avatar
-    .sort({ createdAt: -1 })
-    .skip((page - 1) * limit)
-    .limit(limit);
-
-  console.log('📋 Notifications fetched:', notifications.length);
-  console.log('📋 First notification:', notifications[0]);
+    .populate('senderId', 'name avatarUrl')
+    .sort({ createdAt: -1 });
 
   return {
     data: notifications,
-    total,
-    page,
-    pages: Math.ceil(total / limit)
+    total: notifications.length
   };
 };
 
@@ -34,7 +22,7 @@ exports.getUserNotifications = async (userId, limit = 50, page = 1) => {
 exports.getSentNotifications = async (landlordId) => {
   return await Notification.find({ senderId: landlordId })
     .sort({ createdAt: -1 })
-    .populate('userId', 'name avatarUrl') // optional: who the message was sent to
+    .populate('userId', 'name avatarUrl')
     .lean();
 };
 
@@ -60,7 +48,7 @@ exports.deleteNotification = async (id) => {
   return await Notification.findByIdAndDelete(id);
 };
 
-// Get a notification by ID (used for security checks)
+// Get a notification by ID
 exports.getNotificationById = async (id) => {
   return await Notification.findById(id);
 };
