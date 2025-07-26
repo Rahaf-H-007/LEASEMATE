@@ -115,9 +115,17 @@ const unitSchema = new mongoose.Schema({
     enum: ["available", "booked", "under maintenance"],
     default: "available",
   },
+  subscriptionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Subscription',
+    required: false, // Only required for landlords
+  },
 });
 
 // geospatial index for location-based queries
 unitSchema.index({ location: "2dsphere" });
 
 module.exports = mongoose.model("Units", unitSchema);
+
+// Add timestamps to the schema
+typeof unitSchema.set === 'function' && unitSchema.set('timestamps', true);
