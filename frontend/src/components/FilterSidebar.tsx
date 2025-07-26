@@ -116,6 +116,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ values, onSubmit }) => {
           name="type"
           value={local.type}
           onChange={handleChange}
+          suppressHydrationWarning
         >
           <option value="">أي</option>
           <option value="apartment">شقة</option>
@@ -135,6 +136,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ values, onSubmit }) => {
           name="governorate"
           value={local.governorate}
           onChange={handleChange}
+          suppressHydrationWarning
         >
           {egyptianGovernorates.map((gov) => (
             <option key={gov.value} value={gov.value}>
@@ -156,6 +158,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ values, onSubmit }) => {
           name="furnishing"
           value={local.furnishing}
           onChange={handleChange}
+          suppressHydrationWarning
         >
           <option value="">أي</option>
           <option value="true">مفروش</option>
@@ -189,6 +192,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ values, onSubmit }) => {
         <button
           type="submit"
           className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 px-6 rounded-xl transition-all duration-200 text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+          suppressHydrationWarning
         >
           تطبيق الفلاتر
         </button>
