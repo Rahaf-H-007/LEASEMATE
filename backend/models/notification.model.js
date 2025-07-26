@@ -36,7 +36,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: [ 'LEASE_EXPIRED', 'GENERAL', 'MAINTENANCE_REQUEST', 'MAINTENANCE_UPDATE', 'LEASE_APPROVED', 'BOOKING_REQUEST'],
+    enum: [ 'LEASE_EXPIRED', 'GENERAL', 'MAINTENANCE_REQUEST', 'MAINTENANCE_UPDATE', 'LEASE_APPROVED', 'BOOKING_REQUEST','REFUND_ELIGIBLE','PAYMENT_SUCCESS'],
     default: 'GENERAL',
   },
   isRead: {
@@ -49,6 +49,14 @@ const notificationSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now,
+  },
+  disabled: {
+    type: Boolean,
+    default: false,
+  },
+  meta: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {},
   },
 });
 
