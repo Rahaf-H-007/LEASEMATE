@@ -219,6 +219,32 @@ const addUnit = asyncWrapper(async (req, res, next) => {
     return next(error);
   }
 
+  // Enforce plan unit limit for landlords
+  const user = req.user;
+  if (user.role === 'landlord') {
+    // Fetch latest user data (in case plan changed)
+    const landlord = await require('../models/user.model').findById(user._id);
+    if (!landlord.subscriptionPlan || !landlord.isSubscribed) {
+      return next(appError.create('يجب الاشتراك في خطة لإضافة وحدة.', 403, httpStatusText.FAIL));
+    }
+    // Find the current active subscription
+    const Subscription = require('../models/subscription.model');
+    const activeSub = await Subscription.findOne({
+      landlordId: user._id,
+      status: 'active',
+      endDate: { $gte: new Date() }
+    }).sort({ startDate: -1 });
+    if (!activeSub) {
+      return next(appError.create('لا يوجد اشتراك نشط.', 403, httpStatusText.FAIL));
+    }
+    // Count units for this subscription only
+    const unitCount = await Unit.countDocuments({ ownerId: user._id, subscriptionId: activeSub._id, status: { $in: ['available', 'booked'] } });
+    if (activeSub.unitLimit && unitCount >= activeSub.unitLimit) {
+      return next(appError.create('لقد تجاوزت الحد الأقصى لعدد الوحدات في خطتك الحالية. يرجى الترقية أو تجديد الاشتراك.', 403, httpStatusText.FAIL));
+    }
+    req.activeSub = activeSub; // Pass to next step
+  }
+
   if (!req.files || req.files.length === 0) {
     // Allow units without images
   }
@@ -235,6 +261,7 @@ const addUnit = asyncWrapper(async (req, res, next) => {
     ...req.body,
     images: uploadedImageUrls,
     ownerId: req.user._id, // Set the owner ID from authenticated user
+    subscriptionId: req.activeSub ? req.activeSub._id : undefined,
   });
 
   await unit.save();
