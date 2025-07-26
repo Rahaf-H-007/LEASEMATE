@@ -47,9 +47,11 @@ export default function MyUnitsPage() {
             {units.map((unit) => (
               <div key={unit._id} className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col">
                 <div className="relative w-full h-48 bg-gray-100 dark:bg-gray-800">
-                  {unit.images && unit.images.length > 0 && (unit.images[0]?.url || unit.images[0]) ? (
+                  {unit.images && unit.images.length > 0 && (
+                    typeof unit.images[0] === "string" ? unit.images[0] : (unit.images[0] as { url?: string }).url
+                  ) ? (
                     <Image
-                      src={unit.images[0]?.url ? unit.images[0].url : unit.images[0]}
+                      src={typeof unit.images[0] === "string" ? unit.images[0] : (unit.images[0] as { url?: string }).url || "/fallback.png"}
                       alt={unit.name}
                       fill
                       className="object-cover"
