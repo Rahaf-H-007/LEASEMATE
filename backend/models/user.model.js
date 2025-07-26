@@ -22,7 +22,15 @@ const userSchema = new mongoose.Schema({
         },
         uploadedIdUrl: String,
         selfieUrl: String
-    }
+    },
+    stripeAccountId: { type: String },
+    stripeCustomerId: { type: String }, // Store Stripe customer ID for reusing customers
+    isSubscribed: { type: Boolean, default: false },
+    subscriptionId: { type: String },
+    subscriptionPlan: { type: String, enum: ['basic', 'standard', 'premium'], default: null }, // Plan type
+    planUnitLimit: { type: Number, default: 0 }, // Max units allowed by plan
+    planExpiresAt: { type: Date }, // Plan expiry (optional)
+
 }, { timestamps: true });
 
 // Hash password before saving
