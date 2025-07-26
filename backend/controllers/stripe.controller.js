@@ -2,30 +2,51 @@ const stripe = require('../config/stripe');
 const User = require('../models/user.model');
 const plans = require('../config/plans');
 const Subscription = require('../models/subscription.model');
-const { onlineUsers } = require('../socket');
+const Notification = require('../models/notification.model');
 const Unit = require('../models/unit.model');
 
-// Create Checkout Session for Subscription (direct, no Connect)
+// Create Checkout Session for Subscription
 exports.createCheckoutSession = async (req, res) => {
   try {
-    const { planName } = req.body; // planName: 'basic', 'standard', 'premium'
-    const user = await User.findById(req.user.id);
+    const { planName } = req.body;
     const plan = plans[planName];
-    if (!plan) {
-      return res.status(400).json({ message: 'Invalid plan selected' });
+    if (!plan) return res.status(400).json({ message: 'Invalid plan selected' });
+
+    let user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    let stripeCustomerId = user.stripeCustomerId;
+    const customerEmail = user.email || (user.phone ? `${user.phone}@noemail.local` : undefined);
+
+    if (!stripeCustomerId) {
+      const customer = await stripe.customers.create({
+        email: customerEmail,
+        name: user.name,
+        phone: user.phone,
+        metadata: {
+          userId: user._id.toString(),
+          username: user.username,
+          phone: user.phone,
+        },
+      });
+      stripeCustomerId = customer.id;
+      user.stripeCustomerId = stripeCustomerId;
+      await user.save();
     }
+
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [{ price: plan.priceId, quantity: 1 }],
-      customer_email: user.email,
+      customer: stripeCustomerId,
       success_url: `${process.env.CLIENT_URL}/dashboard/stripe/success`,
       cancel_url: `${process.env.CLIENT_URL}/dashboard/stripe/cancel`,
       metadata: {
         userId: user._id.toString(),
-        planName: planName,
+        planName,
       },
     });
+
     res.json({ url: session.url });
   } catch (error) {
     console.error('Stripe Checkout Session Error:', error.message);
@@ -33,107 +54,199 @@ exports.createCheckoutSession = async (req, res) => {
   }
 };
 
-// Handle Stripe Webhook (mark user as subscribed and set plan info)
+// Stripe Webhook
 exports.handleWebhook = async (req, res) => {
-  console.log('Stripe webhook received!');
   const sig = req.headers['stripe-signature'];
   let event;
+
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-    console.log('Stripe event type:', event.type);
-    console.log('Stripe event body:', JSON.stringify(event.data.object));
+    console.log('Stripe event:', event.type);
   } catch (err) {
-    console.error('Webhook signature verification failed:', err.message);
+    console.error('Webhook Error:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  if (event.type === 'checkout.session.completed') {
+  const { type } = event;
+
+  if (type === 'checkout.session.completed') {
     const session = event.data.object;
     const userId = session.metadata?.userId;
     const planName = session.metadata?.planName;
     const subscriptionId = session.subscription;
     const plan = plans[planName];
+
     try {
-      if (userId && subscriptionId && plan) {
-        // Mark previous subscriptions as expired
-        await Subscription.updateMany({ landlordId: userId, status: 'active' }, { status: 'expired' });
-        // Set start and end date (1 month duration)
-        const startDate = new Date();
-        const endDate = new Date();
-        endDate.setMonth(endDate.getMonth() + 1);
-        // Create new subscription record
-        await Subscription.create({
-          landlordId: userId,
-          planName,
-          stripeSubscriptionId: subscriptionId,
-          status: 'active',
-          startDate,
-          endDate,
-          unitLimit: plan.unitLimit,
-        });
-        // Update user
-        await User.findByIdAndUpdate(userId, {
-          isSubscribed: true,
-          subscriptionId,
-          subscriptionPlan: planName,
-          planUnitLimit: plan.unitLimit,
-          planExpiresAt: endDate,
-        });
-        console.log(`✅ User ${userId} marked as subscribed to ${planName} with sub ID ${subscriptionId}`);
-        // Emit websocket event to user
-        if (global.io) {
-          global.io.to(userId).emit('subscriptionUpdated', { isSubscribed: true });
-        }
+      if (!userId || !subscriptionId || !plan) return;
+
+      await Subscription.updateMany({ landlordId: userId, status: 'active' }, { status: 'expired' });
+
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + 1);
+
+      await Subscription.create({
+        landlordId: userId,
+        planName,
+        stripeSubscriptionId: subscriptionId,
+        status: 'active',
+        startDate,
+        endDate,
+        unitLimit: plan.unitLimit,
+      });
+
+      await User.findByIdAndUpdate(userId, {
+        isSubscribed: true,
+        subscriptionId,
+        subscriptionPlan: planName,
+        planUnitLimit: plan.unitLimit,
+        planExpiresAt: endDate,
+      });
+
+      // Send Arabic notification to landlord
+      const paymentNotif = await Notification.create({
+        userId: userId,
+        title: 'تم دفع الاشتراك',
+        message: `لقد قمت بدفع مبلغ خطة الاشتراك (${plan.price} جنيه) لخطة (${plan.name}) بنجاح.`,
+        type: 'PAYMENT_SUCCESS',
+        isRead: false,
+        createdAt: new Date(),
+      });
+
+      if (global.io) {
+        global.io.to(userId).emit('newNotification', paymentNotif);
+      }
+
+      console.log(`✅ User ${userId} subscribed to ${planName}`);
+
+      if (global.io) {
+        global.io.to(userId).emit('subscriptionUpdated', { isSubscribed: true });
       }
     } catch (err) {
-      console.error('Failed to update user subscription info:', err.message);
+      console.error('Webhook subscription update failed:', err.message);
     }
+  }
+
+  if (type === 'invoice.payment_failed') {
+    const invoice = event.data.object;
+    console.warn(`❌ Payment failed for customer: ${invoice.customer}, invoice: ${invoice.id}`);
+    // Optional: notify or log this
   }
 
   res.status(200).send({ received: true });
 };
 
-// Refund a specific subscription if all its units are not booked
+// Refund Logic
+// Refund Logic
 exports.refundSpecificSubscription = async (req, res) => {
   const { subscriptionId } = req.body;
   const user = await User.findById(req.user.id);
-  console.log('Refund request:', { subscriptionId, userId: user._id });
-  const sub = await Subscription.findOne({ _id: subscriptionId, landlordId: user._id, status: 'active', refunded: false });
-  console.log('Found subscription:', sub);
-  if (!sub) return res.status(400).json({ msg: 'لا يوجد اشتراك نشط قابل للاسترداد' });
+  if (!user) return res.status(404).json({ msg: 'User not found' });
 
-  const units = await Unit.find({ subscriptionId: sub._id });
-  const anyBooked = units.some(unit => unit.status === 'booked');
-  if (anyBooked) return res.status(400).json({ msg: 'لا يمكن استرداد الاشتراك إذا كانت هناك وحدات محجوزة.' });
-
-  // Stripe refund logic with defensive checks
   try {
-    const stripeSub = await stripe.subscriptions.retrieve(sub.stripeSubscriptionId);
+    console.log("Refund API Called by:", req.user.id);
+    console.log("Requested Subscription ID:", subscriptionId);
+
+    const testSub = await Subscription.findById(subscriptionId);
+    console.log("Subscription Raw Record:", testSub);
+
+    const subscription = await Subscription.findOne({
+      _id: subscriptionId,
+      landlordId: user._id,
+      refunded: false,
+    });
+
+    if (!subscription) {
+      return res.status(400).json({ msg: 'لا يوجد اشتراك صالح لهذا المستخدم.' });
+    }
+
+    const statusNormalized = subscription.status?.trim().toLowerCase();
+    console.log("Subscription Status:", subscription.status);
+    if (statusNormalized !== 'expired') {
+      return res.status(400).json({ msg: 'الاشتراك يجب أن يكون منتهي الصلاحية.' });
+    }
+
+    console.log("Already Refunded?", subscription.refunded);
+    console.log("Stripe Subscription ID:", subscription.stripeSubscriptionId);
+
+    const bookedUnits = await Unit.find({
+      landlordId: user._id,
+      subscriptionId: subscription._id,
+      isBooked: true,
+    });
+    console.log("Booked Units:", bookedUnits);
+
+    if (bookedUnits.length > 0) {
+      return res.status(400).json({ msg: 'لا يمكن استرداد الاشتراك إذا كانت هناك وحدات محجوزة.' });
+    }
+
+    // === Stripe operations ===
+    let stripeSub;
+    try {
+      stripeSub = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId);
+      console.log("✅ Retrieved Stripe Subscription:", stripeSub?.id);
+    } catch (err) {
+      console.error("❌ Failed to retrieve Stripe subscription:", err);
+      return res.status(500).json({ msg: 'فشل في جلب الاشتراك من Stripe.' });
+    }
+
     if (!stripeSub.latest_invoice) {
+      console.log("❌ No latest_invoice in subscription");
       return res.status(400).json({ msg: 'لا يوجد فاتورة دفع لهذا الاشتراك.' });
     }
-    const invoice = await stripe.invoices.retrieve(stripeSub.latest_invoice);
+
+    let invoice;
+    try {
+      invoice = await stripe.invoices.retrieve(stripeSub.latest_invoice);
+      console.log("✅ Retrieved Invoice:", invoice?.id);
+    } catch (err) {
+      console.error("❌ Failed to retrieve invoice:", err);
+      return res.status(500).json({ msg: 'فشل في جلب الفاتورة من Stripe.' });
+    }
+
     if (!invoice.payment_intent) {
+      console.log("❌ No payment_intent in invoice");
       return res.status(400).json({ msg: 'لا يوجد عملية دفع لهذا الاشتراك.' });
     }
-    const paymentIntent = await stripe.paymentIntents.retrieve(invoice.payment_intent);
-    await stripe.refunds.create({ payment_intent: paymentIntent.id });
+
+    let paymentIntent;
+    try {
+      paymentIntent = await stripe.paymentIntents.retrieve(invoice.payment_intent);
+      console.log("✅ Retrieved PaymentIntent:", paymentIntent?.id);
+    } catch (err) {
+      console.error("❌ Failed to retrieve payment intent:", err);
+      return res.status(500).json({ msg: 'فشل في جلب عملية الدفع من Stripe.' });
+    }
+
+    let refund;
+    try {
+      refund = await stripe.refunds.create({ payment_intent: paymentIntent.id });
+      console.log("✅ Refund created:", refund?.id);
+    } catch (err) {
+      console.error("❌ Failed to create refund:", err);
+      return res.status(500).json({ msg: 'فشل في تنفيذ عملية الاسترداد من Stripe.' });
+    }
+
+    // === Update DB ===
+    subscription.status = 'refunded';
+    subscription.refunded = true;
+    await subscription.save();
+
+    // Disable related refund notifications
+    await Notification.updateMany({
+      userId: user._id,
+      type: 'REFUND_ELIGIBLE',
+      'meta.subscriptionId': subscription._id,
+      disabled: false,
+    }, { disabled: true });
+
+    console.log("✅ Subscription successfully refunded.");
+    res.json({ success: true, msg: 'تم استرداد الاشتراك بنجاح.', refund });
+
   } catch (err) {
-    console.error('Stripe refund error:', err);
-    return res.status(500).json({ msg: 'حدث خطأ أثناء معالجة الاسترداد من Stripe.' });
+    console.error('❌ Unexpected Refund error:', err);
+    res.status(500).json({ msg: 'حدث خطأ أثناء معالجة الاسترداد من Stripe.' });
   }
-
-  sub.status = 'refunded';
-  sub.refunded = true;
-  await sub.save();
-
-  // Disable notification
-  await require('../models/notification.model').updateMany({
-    userId: user._id,
-    type: 'REFUND_ELIGIBLE',
-    'meta.subscriptionId': sub._id,
-    disabled: false
-  }, { disabled: true });
-
-  res.json({ msg: 'تم استرداد الاشتراك بنجاح.' });
 };
+
+
