@@ -27,6 +27,7 @@ const io = socketIo(server, {
   },
 });
 
+global.io = io;
 // setup socket listeners
 setupSocket(io);
 
@@ -44,14 +45,16 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT','PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+// 🛑 Must use raw body only for webhook
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }), require('./routes/stripe.route'));
 
+// ✅ After webhook, now parse JSON for other routes
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
-
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/units', unitRoutes);
+app.use('/api/stripe', require('./routes/stripe.route'));
 app.use("/api/leases", leaseRoutes);
 app.use("/api/booking", require('./routes/booking.route'));
 app.use('/api/maintenance', maintenanceRoutes);
