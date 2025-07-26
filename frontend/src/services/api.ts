@@ -716,6 +716,18 @@ if (params.governorate)
       },
     });
   }
+
+  // Check if chat exists between tenant and landlord for a specific unit
+  async checkChatExists(tenantId: string, landlordId: string, unitId: string) {
+    return this.request<{
+      exists: boolean;
+      chatId: string | null;
+      hasMessages: boolean;
+      messageCount: number;
+    }>(`/chat/check/${tenantId}/${landlordId}/${unitId}`, {
+      method: "GET",
+    });
+  }
 }
 
 export const apiService = new ApiService();
