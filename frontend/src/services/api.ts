@@ -435,15 +435,15 @@ if (params.governorate)
     if (page) searchParams.append("page", page.toString());
     if (limit) searchParams.append("limit", limit.toString());
     return this.request(
-      `/leases/my-leases${
-        searchParams.toString() ? `?${searchParams.toString()}` : ""
-      }`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("leasemate_token")}`,
-        },
-      }
-    );
+        `/leases/my-leases${
+          searchParams.toString() ? `?${searchParams.toString()}` : ""
+        }`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("leasemate_token")}`,
+          },
+        }
+      );
   }
 
   async downloadLeasePDF(leaseId: string) {

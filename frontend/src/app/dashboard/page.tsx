@@ -78,7 +78,7 @@ export default function Dashboard() {
           toast.error("الاستجابة غير متوقعة من الخادم");
         }
       } catch (err: any) {
-        toast.error(err?.message || "فشل في جلب العقود");
+          toast.error(err?.message || "فشل في جلب العقود");
       } finally {
         setLoadingLeases(false);
       }

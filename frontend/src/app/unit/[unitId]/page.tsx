@@ -7,6 +7,9 @@ import AmenitiesSection from "../../../components/AmentiesSection";
 import RentSidebarCard from "../../../components/RentSidebarCard";
 import Navbar from "../../../components/Navbar";
 import { apiService, Unit } from "../../../services/api";
+import { MessageCircle } from "lucide-react";
+import ChatBox from "../../../components/ChatBox";
+import { useAuth } from '../../../contexts/AuthContext';
 
 export default function UnitDetailPage() {
   const params = useParams();
@@ -15,6 +18,11 @@ export default function UnitDetailPage() {
   const [unit, setUnit] = useState<Unit | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { user } = useAuth();
+  const [showChat, setShowChat] = useState(false);
+  const [chatId, setChatId] = useState<string | null>(null);
+  const [chatLoading, setChatLoading] = useState(false);
 
   useEffect(() => {
     const fetchUnit = async () => {
@@ -135,20 +143,28 @@ export default function UnitDetailPage() {
   // Get owner information
   const ownerInfo = typeof unit.ownerId === "object" ? unit.ownerId : null;
 
+  const isTenant = user && user.role === 'tenant' && user._id !== ownerInfo?._id;
+  // when press on chat button open the chat but don't save it at database untill there is a message
+  const handleOpenChat = () => {
+    setShowChat(true);
+  };
+
   return (
     <div
       dir="rtl"
       className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800 min-h-screen text-gray-900 dark:text-white"
     >
       <Navbar />
-      <div className="pt-14">
+      <div className="pt-20">
         <div className="max-w-7xl mx-auto px-4 lg:px-8 py-8">
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
             <ImageSlider
               images={
                 unit?.images && unit.images.length > 0
-                  ? unit.images.map(img => typeof img === "string" ? img : img.url)
-                  : ["/placeholder-image.jpg"]
+                  ? unit.images.map((img: string | { url: string }) =>
+                      typeof img === "string" ? img : img.url
+                    )
+                  : ["/logo.png"]
               }
             />
             <div className="p-6 lg:p-8">
@@ -189,6 +205,43 @@ export default function UnitDetailPage() {
                 </div>
               </div>
             </div>
+            {isTenant && (
+              <div className="fixed bottom-6 right-6 z-50">
+                <button
+                  onClick={handleOpenChat}
+                  className="fixed bottom-8 right-8 z-50 bg-orange-500 hover:bg-orange-600 text-white rounded-full p-4 shadow-lg flex items-center justify-center group"
+                  aria-label="Chat with owner"
+                >
+                  <MessageCircle className="w-7 h-7" />
+                  <span
+                    className="absolute right-16 bottom-1/2 translate-y-1/2 bg-orange-600 text-white font-bold px-4 py-2 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 pointer-events-none whitespace-nowrap"
+                    style={{ minWidth: 'max-content' }}
+                  >
+                    التواصل مع المالك
+                  </span>
+                </button>
+              </div>
+            )}
+            {/* نافذة الشات */}
+            {showChat && (
+              <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg shadow-lg p-4 w-full max-w-md relative">
+                  <button
+                    className="absolute top-2 left-2 text-gray-500 hover:text-gray-800"
+                    onClick={() => setShowChat(false)}
+                  >✕</button>
+                  <h2 className="text-lg font-bold mb-2 text-center">محادثة مع مالك الوحدة: {unit?.name || 'الوحدة'}</h2>
+                  <ChatBox
+                    chatId={chatId}
+                    setChatId={setChatId}
+                    userId={user?._id}
+                    receiverId={ownerInfo?._id}
+                    unitId={unit?._id}
+                    receiverName={ownerInfo?.name}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

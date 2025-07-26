@@ -13,7 +13,7 @@ const leaseSchema = new mongoose.Schema({
   },
   unitId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Units",
+    ref: "Unit",
     required: true
   },
   rentAmount: Number,

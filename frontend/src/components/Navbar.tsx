@@ -2,21 +2,39 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import Logo from './Logo';
-import { Bell } from 'lucide-react';
+import { Bell, Mail } from 'lucide-react';
 import { useNotifications } from '@/contexts/NotificationsContext';
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, logout, socket } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { notifications, loading } = useNotifications();
   const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const [newMessagesCount, setNewMessagesCount] = useState(0);
+
+  useEffect(() => {
+    if (!socket || !user) return;
+    const handleNewChatMessage = (msg: any) => {
+      setNewMessagesCount((prev) => prev + 1);
+    };
+    socket.on('newChatMessage', handleNewChatMessage);
+
+    return () => {
+      socket.off('newChatMessage', handleNewChatMessage);
+    };
+  }, [socket, user]);
+
+  const handleMessagesClick = () => {
+    setNewMessagesCount(0);
+    window.location.href = '/dashboard/messages';
+  };
 
   const handleThemeToggle = () => {
     toggleTheme();
@@ -115,7 +133,21 @@ export default function Navbar() {
           ) : null}
         </nav>
          {/* Notification Bell */}
-        <div className="mx-5">
+        <div className="mx-5 flex gap-4">
+          {user && (user.role === 'landlord' || user.role === 'tenant') && (
+            <button
+              className="relative"
+              onClick={handleMessagesClick}
+              aria-label="الرسائل"
+            >
+              <Mail className="w-6 h-6 text-gray-700 hover:text-orange-600" />
+              {newMessagesCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-orange-500 text-white rounded-full px-2 text-xs">
+                  {newMessagesCount}
+                </span>
+              )}
+            </button>
+          )}
           {user && (
             <Link href="/notifications" className="relative">
               <Bell className="w-6 h-6 text-gray-700 hover:text-orange-600" />
@@ -126,6 +158,7 @@ export default function Navbar() {
               )}
             </Link>
           )}
+          
         </div>
 
         <div className="flex items-center gap-4">

@@ -47,6 +47,21 @@ function setupSocket(io) {
     socket.on('error', (error) => {
       console.error("❌ Socket error:", error);
     });
+    
+    // --- Chat Events ---
+    socket.on('joinChat', (chatId) => {
+      socket.join(chatId);
+      console.log(`🟢 User joined chat room: ${chatId}`);
+    });
+
+    socket.on('sendMessage', async (data) => {
+      // data: { chatId, senderId, receiverId, text }
+      const { chatId, senderId, receiverId, text } = data;
+      // بث الرسالة للطرفين في روم الشات مع تمرير receiverId
+      io.to(chatId).emit('newMessage', { chatId, senderId: String(senderId), receiverId: String(receiverId), text });
+      // إشعار المالك (أو المستأجر) في الـNavbar
+      io.to(receiverId).emit('newChatMessage', { chatId, from: senderId, text });
+    });
   });
 }
 

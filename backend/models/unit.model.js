@@ -144,4 +144,4 @@ const unitSchema = new mongoose.Schema({
 
 unitSchema.index({ location: "2dsphere" });
 
-module.exports = mongoose.model("Units", unitSchema);
+module.exports = mongoose.model("Unit", unitSchema);

@@ -194,12 +194,7 @@ export default function UserProfilePage() {
             </span>
           </div>
           <div className="space-y-6">
-            {user.phone && (
-              <div className="flex items-center gap-2">
-                <span className="text-xl font-medium text-gray-700 dark:text-gray-200">رقم الهاتف:</span>
-                <span className="text-xl font-medium text-gray-900 dark:text-white">{user.phone}</span>
-              </div>
-            )}
+            
             <div className="flex items-center gap-2">
               <span className="text-xl font-medium text-gray-700 dark:text-gray-200">حالة التحقق:</span>
               <span className={
