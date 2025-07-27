@@ -95,11 +95,11 @@ async function checkRefundEligibility(io) {
         const notif = await Notification.create({
           userId: sub.landlordId,
           type: 'REFUND_ELIGIBLE',
-          message: 'يمكنك استرداد قيمة اشتراكك لهذا الشهر لأن جميع وحداتك غير محجوزة.',
+          message: `يمكنك استرداد قيمة الاشتراك رقم ${sub._id} .في حاله الرغبه في الاستردار اضغط هنا للتواصل مع الدعم`,
           meta: { subscriptionId: sub._id },
           disabled: false,
           title: 'استرداد الاشتراك',
-          link: `/refund/${sub._id}`,
+          link: `/dashboard/support-chat`,
         });
         if (io) io.to(sub.landlordId.toString()).emit('newNotification', notif);
       } else {
