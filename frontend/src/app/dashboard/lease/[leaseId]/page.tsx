@@ -3,19 +3,103 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiService } from "@/services/api";
 import Navbar from "@/components/Navbar";
+import OfficialLeaseView from "@/components/OfficialLeaseView";
 import toast from "react-hot-toast";
-
+import Link from "next/link";
 // CSS للطباعة
 const printStyles = `
   @media print {
-    body { margin: 0; }
+    body { 
+      margin: 0; 
+      background: white !important;
+      color: black !important;
+    }
     .no-print { display: none !important; }
     .print-only { display: block !important; }
     .bg-white { background: white !important; }
     .text-right { text-align: right !important; }
-    .border { border: 1px solid #000 !important; }
+    .border { border: 1px solid black !important; }
     .shadow-lg { box-shadow: none !important; }
     .rounded-xl { border-radius: 0 !important; }
+    .bg-gradient-to-br { background: white !important; }
+    .dark\\:from-gray-900 { background: white !important; }
+    .dark\\:to-gray-800 { background: white !important; }
+    .dark\\:text-gray-200 { color: black !important; }
+    .dark\\:text-gray-400 { color: black !important; }
+    .dark\\:text-gray-600 { color: black !important; }
+    .dark\\:bg-gray-800 { background: white !important; }
+    .dark\\:border-gray-700 { border-color: black !important; }
+    .dark\\:border-gray-200 { border-color: black !important; }
+    .dark\\:text-orange-400 { color: black !important; }
+    .text-orange-600 { color: black !important; }
+    .text-gray-600 { color: black !important; }
+    .text-gray-500 { color: black !important; }
+    .text-gray-700 { color: black !important; }
+    .bg-orange-50 { background: white !important; }
+    .bg-amber-50 { background: white !important; }
+    
+    .contract-header { 
+      background: white !important;
+      color: black !important;
+      padding: 20px !important;
+      text-align: center !important;
+      border-radius: 0 !important;
+      border-bottom: 2px solid black !important;
+    }
+    
+    .official-stamp {
+      position: absolute !important;
+      top: 50px !important;
+      right: 50px !important;
+      width: 120px !important;
+      height: 120px !important;
+      border: 3px solid black !important;
+      border-radius: 50% !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      font-weight: bold !important;
+      font-size: 12px !important;
+      color: black !important;
+      background: white !important;
+      transform: rotate(-15deg) !important;
+    }
+    
+    /* إخفاء العناصر غير المطلوبة للطباعة */
+    .no-print { display: none !important; }
+    
+    /* تحسين مظهر النص للطباعة */
+    * { 
+      color: black !important; 
+      background: white !important;
+    }
+    
+    /* تحسين الحدود للطباعة */
+    .border-2 { border: 2px solid black !important; }
+    .border-black { border-color: black !important; }
+    
+    /* تحسين المسافات للطباعة */
+    .p-8 { padding: 20px !important; }
+    .pt-20 { padding-top: 20px !important; }
+    .mb-6 { margin-bottom: 15px !important; }
+    .gap-8 { gap: 20px !important; }
+    
+    /* تحسين الخطوط للطباعة */
+    .text-3xl { font-size: 24px !important; }
+    .text-xl { font-size: 18px !important; }
+    .text-lg { font-size: 16px !important; }
+    .text-sm { font-size: 14px !important; }
+    
+    /* إزالة الظلال والتأثيرات */
+    .shadow-lg { box-shadow: none !important; }
+    .hover\\:shadow-xl { box-shadow: none !important; }
+    .transition-all { transition: none !important; }
+    .duration-300 { transition-duration: 0s !important; }
+    
+    /* تحسين العرض للطباعة */
+    .max-w-5xl { max-width: none !important; }
+    .mx-auto { margin: 0 !important; }
+    .px-4 { padding-left: 0 !important; padding-right: 0 !important; }
   }
 `;
 
@@ -50,207 +134,70 @@ export default function LeaseDetailsPage() {
     }
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
         <Navbar />
-        <div className="text-center pt-32 text-lg">جاري التحميل...</div>
+        <div className="text-center pt-32">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+          <p className="mt-4 text-lg text-gray-600 dark:text-gray-200">جاري التحميل...</p>
+        </div>
       </div>
     );
   }
+  
   if (!lease) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
-        <div className="text-center pt-32 text-lg text-red-600">
-          لم يتم العثور على العقد
+        <Navbar />
+        <div className="text-center pt-32">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 max-w-md mx-auto">
+            <div className="text-6xl mb-4">❌</div>
+            <h3 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-2">
+              لم يتم العثور على العقد
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400">
+              يبدو أن العقد المطلوب غير موجود أو تم حذفه
+            </p>
+          </div>
         </div>
       </div>
     );
   }
 
-  // تحديد نص الحالة بشكل ديناميكي
-  const now = new Date();
-  let statusText = "";
-  if (lease.status === "rejected") {
-    statusText = "مرفوض";
-  } else if (lease.status === "pending") {
-    statusText = "قيد الانتظار";
-  } else if (lease.endDate && new Date(lease.endDate) < now) {
-    statusText = "منتهي";
-  } else if (lease.status === "active") {
-    statusText = "نشط";
-  } else {
-    statusText = lease.status || "-";
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
       <style dangerouslySetInnerHTML={{ __html: printStyles }} />
-      <div className="max-w-4xl mx-auto pt-20 px-4">
+   
+      <div className="max-w-5xl mx-auto pt-20 px-4">
         <div className="flex justify-between items-center mb-6 no-print">
           <h1 className="text-3xl font-bold text-orange-600 dark:text-orange-400">
             عقد إيجار وحدة سكنية
           </h1>
           <div className="flex gap-3">
             <button
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold"
-              onClick={() => window.print()}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold transition-all duration-200"
+              onClick={handlePrint}
             >
-              طباعة العقد pdf
+              طباعة العقد
             </button>
+           <button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold transition-all duration-200">
+            <Link href="/dashboard/leases">
+              العودة إلى العقود
+            </Link>
+           </button>
           </div>
         </div>
 
-        {/* عقد HTML */}
-        <div
-          className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-8 text-right"
-          dir="rtl"
-        >
-          {/* الطرفين */}
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
-            <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-              <h3 className="text-lg font-bold text-orange-600 dark:text-orange-400 mb-3">
-                الطرف الأول (المالك)
-              </h3>
-              <p className="mb-2 dark:text-white">
-                <span className="font-semibold dark:text-white">الاسم:</span>{" "}
-                {lease.landlordId?.name}
-              </p>
-              <p className="mb-2 dark:text-white">
-                <span className="font-semibold dark:text-white">رقم الهاتف:</span>{" "}
-                {lease.landlordId?.phone}
-              </p>
-            </div>
-            <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-              <h3 className="text-lg font-bold text-orange-600 dark:text-orange-400 mb-3">
-                الطرف الثاني (المستأجر)
-              </h3>
-              <p className="mb-2 dark:text-white">
-                <span className="font-semibold dark:text-white">الاسم:</span>{" "}
-                {lease.tenantId?.name}
-              </p>
-              <p className="mb-2 dark:text-white">
-                <span className="font-semibold dark:text-white">رقم الهاتف:</span>{" "}
-                {lease.tenantId?.phone}
-              </p>
-            </div>
-          </div>
-
-          {/* بيانات الوحدة */}
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
-            <h3 className="text-lg font-bold text-orange-600 dark:text-orange-400 mb-3">
-              بيانات الوحدة
-            </h3>
-            <div className="grid md:grid-cols-3 gap-4">
-              <p className="dark:text-white">
-                <span className="font-semibold dark:text-white">اسم الوحدة:</span>{" "}
-                {lease.unitId?.name}
-              </p>
-              <p className="dark:text-white">
-                <span className="font-semibold dark:text-white">العنوان:</span>{" "}
-                {lease.unitId?.address}
-              </p>
-              <p className="dark:text-white">
-                <span className="font-semibold dark:text-white">النوع:</span>{" "}
-                {lease.unitId?.type}
-              </p>
-            </div>
-          </div>
-
-          {/* بيانات العقد */}
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
-            <h3 className="text-lg font-bold text-orange-600 dark:text-orange-400 mb-3">
-              بيانات العقد
-            </h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              <p className="dark:text-white">
-                <span className="font-semibold dark:text-white">قيمة الإيجار الشهري:</span>{" "}
-                {lease.rentAmount} جنيه مصري
-              </p>
-              <p className="dark:text-white">
-                <span className="font-semibold dark:text-white">قيمة التأمين:</span>{" "}
-                {lease.depositAmount} جنيه مصري
-              </p>
-              <p className="dark:text-white">
-                <span className="font-semibold dark:text-white">تاريخ بداية العقد:</span>{" "}
-                {lease.startDate
-                  ? new Date(lease.startDate).toLocaleDateString("ar-EG")
-                  : "-"}
-              </p>
-              <p className="dark:text-white">
-                <span className="font-semibold dark:text-white">تاريخ نهاية العقد:</span>{" "}
-                {lease.endDate
-                  ? new Date(lease.endDate).toLocaleDateString("ar-EG")
-                  : "-"}
-              </p>
-              <p className="dark:text-white">
-                <span className="font-semibold dark:text-white">شروط الدفع:</span>{" "}
-                {lease.paymentTerms || "-"}
-              </p>
-              <p className="dark:text-white">
-                <span className="font-semibold dark:text-white">حالة العقد:</span>{" "}
-                {statusText}
-              </p>
-            </div>
-            {/* المبلغ الإجمالي */}
-            <div className="mt-4 text-lg font-bold text-orange-700 dark:text-orange-300">
-              {(() => {
-                let months = 1;
-                if (lease.startDate && lease.endDate) {
-                  const start = new Date(lease.startDate);
-                  const end = new Date(lease.endDate);
-                  months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
-                  if (months < 1) months = 1;
-                }
-                const totalAmount = lease.rentAmount && months ? lease.rentAmount * months : null;
-                return totalAmount ? `المبلغ الإجمالي: ${totalAmount.toLocaleString()} جنيه مصري (${months} شهر)` : null;
-              })()}
-            </div>
-          </div>
-
-          {/* التوقيعات */}
-          <div className="border-t-2 border-orange-500 pt-6">
-            <div className="grid md:grid-cols-2 gap-8">
-              <div className="text-center">
-                <h4 className="font-bold mb-4 dark:text-white">توقيع الطرف الأول (المالك)</h4>
-                <div className="border-b-2 border-gray-400 w-48 mx-auto h-8 mb-2"></div>
-                <p className="text-sm dark:text-white">{lease.landlordId?.name}</p>
-              </div>
-              <div className="text-center">
-                <h4 className="font-bold mb-4 dark:text-white">
-                  توقيع الطرف الثاني (المستأجر)
-                </h4>
-                <div className="border-b-2 border-gray-400 w-48 mx-auto h-8 mb-2"></div>
-                <p className="text-sm dark:text-white">{lease.tenantId?.name}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* الخلاصة */}
-          <div className="text-center mt-8 p-4 bg-orange-50 dark:bg-orange-900 rounded-lg">
-            <p className="text-gray-700 font-extrabold dark:text-white ">
-              تم تحرير هذا العقد بين الطرفين ويخضع لأحكام القانون المصري.
-            </p>
-            <p className="text-gray-700 font-extrabold dark:text-white">
-              {" "}
-              بند فسخ العقد والإخلاء المبكر لا يجوز لأي من الطرفين (المالك أو
-              المستأجر) إنهاء عقد الإيجار أو طلب الإخلاء إلا بموجب إخطار كتابي
-              مُسبق يُقدَّم للطرف الآخر قبل مدة لا تقل عن ثلاثين (30) يومًا من
-              تاريخ الإخلاء المطلوب، مع توضيح الأسباب الداعية لذلك. ويُشترط أن
-              تكون أسباب الإخلاء مشروعة وتتفق مع القوانين واللوائح المعمول بها،
-              مثل:<br /> 1-تأخر المستأجر في سداد الإيجار لفترة تتجاوز المدة المحددة في
-              العقد. <br />
-               2-استخدام الوحدة المؤجرة في أنشطة غير مشروعة. <br />
-               3-الإضرار الجسيم
-              بالوحدة المؤجرة.
-            </p>
-            <p className="text-gray-700 dark:text-white">
-              تم التوقيع على هذا العقد في يوم{" "}
-              {new Date().toLocaleDateString("ar-EG")}، ويعتبر ساري المفعول من
-              تاريخ التوقيع.
-            </p>
-          </div>
-        </div>
+        <OfficialLeaseView
+          lease={lease}
+          onPrint={handlePrint}
+          onDownload={handleDownload}
+        />
       </div>
     </div>
   );
