@@ -78,7 +78,7 @@ exports.createReview = async (req, res) => {
       await User.findByIdAndUpdate(reviewerId, { $inc: { abusiveCommentsCount: 1 } });
       // إرسال إشعار تحذيري (يمكنك تعديل نص الرسالة حسب الحاجة)
       const notificationService = require('../services/notification.service');
-      await notificationService.createNotification({
+      const notification = await notificationService.createNotification({
         userId: reviewerId,
         senderId: null,
         type: 'ABUSIVE_COMMENT_WARNING',
@@ -86,6 +86,17 @@ exports.createReview = async (req, res) => {
         message: 'لقد قمت بكتابة تعليق مسيء. تكرار ذلك قد يؤدي إلى حظرك من المنصة.',
         isRead: false
       });
+
+      // إرسال الإشعار عبر Socket.io للعرض الفوري
+      const io = req.app.get('io');
+      if (io) {
+        console.log('📡 Emitting abusive comment warning to user:', reviewerId);
+        const populatedNotification = await notification.populate('senderId', 'name avatarUrl');
+        io.to(reviewerId).emit('newNotification', populatedNotification);
+        console.log('✅ Abusive comment warning emitted successfully');
+      } else {
+        console.error('❌ Socket.io instance not available for abusive comment warning');
+      }
     }
 
     // إنشاء التقييم
