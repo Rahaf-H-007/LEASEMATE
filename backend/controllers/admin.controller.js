@@ -121,6 +121,13 @@ const refundSubscription = async (req, res) => {
       return res.status(400).json({ message: "يمكن استرداد الاشتراكات المنتهية الصلاحية فقط" });
     }
 
+    // Check if more than a month has passed since subscription creation
+    const now = new Date();
+    const oneMonthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+    if (subscription.startDate > oneMonthAgo) {
+      return res.status(400).json({ message: "لا يمكن استرداد الاشتراك إلا بعد مرور شهر على إنشائه" });
+    }
+
     // Check if there are any booked units
     const bookedUnits = await Unit.find({
       subscriptionId: subscription._id,
