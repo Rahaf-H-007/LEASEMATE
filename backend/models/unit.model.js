@@ -150,7 +150,7 @@ subscriptionId: {
 // geospatial index for location-based queries
 unitSchema.index({ location: "2dsphere" });
 
-module.exports = mongoose.model("Units", unitSchema);
+module.exports = mongoose.model("Unit", unitSchema);
 
 // Add timestamps to the schema
 typeof unitSchema.set === 'function' && unitSchema.set('timestamps', true);
