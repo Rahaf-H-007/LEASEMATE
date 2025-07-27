@@ -6,6 +6,7 @@ import { apiService } from '@/services/api';
 import { useRouter } from 'next/navigation';
 import Logo from '@/components/Logo';
 import { Pie } from 'react-chartjs-2';
+import toast, { Toaster } from 'react-hot-toast';
 import {
   Chart as ChartJS,
   ArcElement,
@@ -51,7 +52,7 @@ export default function AdminDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const usersPerPage = 6; // Number of users per page
  
-  const [activeTab, setActiveTab] = useState<'table' | 'dashboard' | 'images' | 'abusive'>('table');
+  const [activeTab, setActiveTab] = useState<'table' | 'dashboard' | 'images' | 'abusive' | 'subscriptions'>('table');
 
   // State for pending images (now pending units)
   const [pendingUnits, setPendingUnits] = useState<any[]>([]);
@@ -68,6 +69,17 @@ export default function AdminDashboard() {
   const [loadingAbusive, setLoadingAbusive] = useState(false);
   const [blockLoadingId, setBlockLoadingId] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // State for subscriptions
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [loadingSubscriptions, setLoadingSubscriptions] = useState(false);
+  const [refundLoadingId, setRefundLoadingId] = useState<string | null>(null);
+  const [subscriptionSearchId, setSubscriptionSearchId] = useState<string>('');
+  const [subscriptionStatusFilter, setSubscriptionStatusFilter] = useState<string>('all');
+  
+  // State for refund confirmation modal
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [pendingRefundSubscription, setPendingRefundSubscription] = useState<any>(null);
 
   // Check admin access
   useEffect(() => {
@@ -128,6 +140,12 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (activeTab === 'images' && token && user?.role === 'admin') {
       fetchPendingImages();
+    }
+  }, [activeTab, token, user]);
+
+  useEffect(() => {
+    if (activeTab === 'subscriptions' && token && user?.role === 'admin') {
+      fetchSubscriptions();
     }
   }, [activeTab, token, user]);
 
@@ -231,6 +249,60 @@ export default function AdminDashboard() {
       setAbusiveUsers([]);
     } finally {
       setLoadingAbusive(false);
+    }
+  };
+
+  // fetching the subscription
+  const fetchSubscriptions = async () => {
+    if (!token) return;
+    setLoadingSubscriptions(true);
+    try {
+      const res = await apiService.getSubscriptions(token);
+      setSubscriptions(res.subscriptions || []);
+    } catch (err: any) {
+      setSubscriptions([]);
+      toast.error(err.message || 'حدث خطأ أثناء جلب الاشتراكات');
+    } finally {
+      setLoadingSubscriptions(false);
+    }
+  };
+
+  const handleRefundSubscription = async (subscriptionId: string) => {
+    if (!token) return;
+    
+    // Find the subscription to show in modal
+    const subscription = subscriptions.find(sub => sub._id === subscriptionId);
+    if (subscription) {
+      setPendingRefundSubscription(subscription);
+      setShowRefundModal(true);
+    }
+  };
+
+  const confirmRefundSubscription = async () => {
+    if (!token || !pendingRefundSubscription) return;
+    
+    setRefundLoadingId(pendingRefundSubscription._id);
+    try {
+      const result = await apiService.refundSubscription(pendingRefundSubscription._id, token);
+      // Update local state immediately for better UX
+      setSubscriptions(prev => prev.map(sub => {
+        if (sub._id === pendingRefundSubscription._id) {
+          return {
+            ...sub,
+            status: 'refunded',
+            refunded: true
+          };
+        }
+        return sub;
+      }));
+      toast.success(result.message || 'تم استرداد الاشتراك بنجاح');
+      setShowRefundModal(false);
+      setPendingRefundSubscription(null);
+    } catch (err: any) {
+      console.error('Error refunding subscription:', err);
+      toast.error(err.message || 'حدث خطأ أثناء استرداد الاشتراك');
+    } finally {
+      setRefundLoadingId(null);
     }
   };
 
@@ -383,6 +455,16 @@ export default function AdminDashboard() {
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
               </svg>
               <p className="text-sm font-semibold">المستخدمون المسيئون</p>
+            </button>
+            {/* اشتراكات */}
+            <button
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${activeTab === 'subscriptions' ? (isDarkMode ? 'bg-orange-900 text-orange-300 font-semibold' : 'bg-orange-50 text-orange-600 font-semibold') : (isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-stone-100')}`}
+              onClick={() => setActiveTab('subscriptions')}
+            >
+              <svg className={`${activeTab === 'subscriptions' ? 'text-orange-500' : (isDarkMode ? 'text-gray-300' : 'text-gray-600')}`} fill="currentColor" height="24px" viewBox="0 0 24 24" width="24px">
+                <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
+              </svg>
+              <p className="text-sm font-semibold">اشتراكات الملاك</p>
             </button>
           
           </nav>
@@ -643,6 +725,191 @@ export default function AdminDashboard() {
                   )}
                 </div>
               </div>
+            ) : activeTab === 'subscriptions' ? (
+              <div className="h-full flex flex-col">
+                <header className="mb-8 flex-shrink-0">
+                  <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>الاشتراكات</h1>
+                  <p className={`mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>إدارة اشتراكات الملاك.</p>
+                </header>
+                
+                <div className={`rounded-xl shadow-sm p-6 flex-1 overflow-hidden ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                  {/* Search Bar and Filters */}
+                  <div className="mb-4">
+                    <div className="flex gap-3 items-center flex-wrap">
+                      <div className="relative flex-1 max-w-md">
+                        <input
+                          type="text"
+                          placeholder="البحث برقم الاشتراك..."
+                          value={subscriptionSearchId}
+                          onChange={(e) => setSubscriptionSearchId(e.target.value)}
+                          className={`w-full px-4 py-2 rounded-lg border ${isDarkMode ? 'border-gray-600 bg-gray-700 text-gray-300 placeholder-gray-400' : 'border-gray-200 bg-white text-gray-900 placeholder-gray-500'}`}
+                        />
+                        {subscriptionSearchId && (
+                          <button
+                            onClick={() => setSubscriptionSearchId('')}
+                            className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                      
+                      {/* Status Filter Buttons */}
+                      <div className="flex gap-2 flex-wrap">
+                        <button
+                          onClick={() => setSubscriptionStatusFilter('all')}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            subscriptionStatusFilter === 'all'
+                              ? 'bg-orange-500 text-white'
+                              : isDarkMode 
+                                ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
+                        >
+                          الكل
+                        </button>
+                        <button
+                          onClick={() => setSubscriptionStatusFilter('active')}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            subscriptionStatusFilter === 'active'
+                              ? 'bg-green-500 text-white'
+                              : isDarkMode 
+                                ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
+                        >
+                          نشط
+                        </button>
+                        <button
+                          onClick={() => setSubscriptionStatusFilter('expired')}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            subscriptionStatusFilter === 'expired'
+                              ? 'bg-red-500 text-white'
+                              : isDarkMode 
+                                ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
+                        >
+                          منتهي الصلاحية
+                        </button>
+                        <button
+                          onClick={() => setSubscriptionStatusFilter('refunded')}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            subscriptionStatusFilter === 'refunded'
+                              ? 'bg-gray-500 text-white'
+                              : isDarkMode 
+                                ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
+                        >
+                          تم الاسترداد
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {loadingSubscriptions ? (
+                    <div className={`text-center py-12 text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>جاري تحميل الاشتراكات...</div>
+                  ) : subscriptions.length === 0 ? (
+                    <div className={`text-center py-12 text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>لا توجد اشتراكات في النظام حالياً</div>
+                  ) : (
+                    <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-200px)]">
+                      <table className="w-full text-sm text-right">
+                        <thead className={`text-xs uppercase ${isDarkMode ? 'text-gray-300 bg-gray-700' : 'text-gray-500 bg-gray-50'}`}>
+                          <tr>
+                            <th className="px-4 py-3">رقم الاشتراك</th>
+                            <th className="px-4 py-3">المالك</th>
+                            <th className="px-4 py-3">خطة الاشتراك</th>
+                            <th className="px-4 py-3">حالة الاشتراك</th>
+                            <th className="px-4 py-3">تاريخ البداية</th>
+                            <th className="px-4 py-3">تاريخ الانتهاء</th>
+                            <th className="px-4 py-3">عدد الوحدات المسموحة</th>
+                            <th className="px-4 py-3">تم الاسترداد</th>
+                            <th className="px-4 py-3">الإجراءات</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {subscriptions
+                            .filter(subscription => {
+                              // Search filter
+                              const searchMatch = !subscriptionSearchId || 
+                                subscription._id.toLowerCase().includes(subscriptionSearchId.toLowerCase());
+                              
+                              // Status filter
+                              const statusMatch = subscriptionStatusFilter === 'all' || 
+                                subscription.status === subscriptionStatusFilter;
+                              
+                              return searchMatch && statusMatch;
+                            })
+                            .map((subscription) => (
+                            <tr key={subscription._id} className={`border-b ${isDarkMode ? 'border-gray-700 bg-gray-900 hover:bg-gray-800' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
+                              <td className={`py-2 px-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                {subscription._id}
+                              </td>
+                              <td className={`py-2 px-4 font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                {subscription.landlordId?.name || 'غير محدد'}
+                              </td>
+                              <td className={`py-2 px-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                {subscription.planName === 'basic' ? 'أساسي' : 
+                                 subscription.planName === 'standard' ? 'قياسي' : 
+                                 subscription.planName === 'premium' ? 'مميز' : subscription.planName}
+                              </td>
+                              <td className="py-2 px-4">
+                                {subscription.status === 'active' ? (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 ring-1 ring-inset ring-green-200">
+                                    نشط
+                                  </span>
+                                ) : subscription.status === 'expired' ? (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 ring-1 ring-inset ring-red-200">
+                                    منتهي الصلاحية
+                                  </span>
+                                ) : subscription.status === 'refunded' ? (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 ring-1 ring-inset ring-gray-200">
+                                    تم الاسترداد
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 ring-1 ring-inset ring-yellow-200">
+                                    {subscription.status}
+                                  </span>
+                                )}
+                              </td>
+                              <td className={`py-2 px-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                {new Date(subscription.startDate).toLocaleDateString()}
+                              </td>
+                              <td className={`py-2 px-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                {new Date(subscription.endDate).toLocaleDateString()}
+                              </td>
+                              <td className={`py-2 px-4 text-center ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                {subscription.unitLimit}
+                              </td>
+                              <td className="py-2 px-4 text-center">
+                                {subscription.refunded ? (
+                                  <span className="text-green-600 font-bold">نعم</span>
+                                ) : (
+                                  <span className="text-red-600 font-bold">لا</span>
+                                )}
+                              </td>
+                              <td className="py-2 px-4">
+                                {subscription.status === 'expired' && !subscription.refunded && (
+                                  <button
+                                    className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
+                                    disabled={refundLoadingId === subscription._id}
+                                    onClick={() => handleRefundSubscription(subscription._id)}
+                                  >
+                                    {refundLoadingId === subscription._id ? '...' : 'استرداد'}
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
             ) : (
               <>
                 <header className="mb-8">
@@ -776,6 +1043,98 @@ export default function AdminDashboard() {
         </main>
       </div>
 
+      {/* Refund Confirmation Modal */}
+      {showRefundModal && pendingRefundSubscription && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className={`rounded-xl shadow-xl p-8 max-w-xl w-full relative ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+            <button
+              className={`absolute top-3 right-3 text-2xl ${isDarkMode ? 'text-gray-400 hover:text-orange-400' : 'text-gray-500 hover:text-orange-600'}`}
+              onClick={() => {
+                setShowRefundModal(false);
+                setPendingRefundSubscription(null);
+              }}
+              aria-label="إغلاق"
+            >
+              ×
+            </button>
+            
+            <div className="text-center mb-6">
+              <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-orange-900/20' : 'bg-orange-100'}`}>
+                <svg className="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h2 className={`text-xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>تأكيد استرداد الاشتراك</h2>
+              <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                هل أنت متأكد من استرداد هذا الاشتراك؟
+              </p>
+            </div>
+
+            <div className={`p-4 rounded-lg mb-6 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>المالك:</span>
+                  <span className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {pendingRefundSubscription.landlordId?.name || 'غير محدد'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>خطة الاشتراك:</span>
+                  <span className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {pendingRefundSubscription.planName === 'basic' ? 'أساسي' : 
+                     pendingRefundSubscription.planName === 'standard' ? 'قياسي' : 
+                     pendingRefundSubscription.planName === 'premium' ? 'مميز' : pendingRefundSubscription.planName}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>رقم الاشتراك:</span>
+                  <span className={`text-sm font-mono ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {pendingRefundSubscription._id.substring(0, 8)}...
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className={`p-3 rounded-lg mb-6 ${isDarkMode ? 'bg-red-900/20 border border-red-700' : 'bg-red-50 border border-red-200'}`}>
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <p className={`text-sm ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>
+                  <strong>تحذير:</strong> سيتم حذف جميع الوحدات المرتبطة بهذا الاشتراك نهائياً.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowRefundModal(false);
+                  setPendingRefundSubscription(null);
+                }}
+                className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors ${isDarkMode ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+              >
+                إلغاء
+              </button>
+              <button
+                onClick={confirmRefundSubscription}
+                disabled={refundLoadingId === pendingRefundSubscription._id}
+                className="flex-1 px-4 py-2 rounded-lg font-semibold bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {refundLoadingId === pendingRefundSubscription._id ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    جاري الاسترداد...
+                  </div>
+                ) : (
+                  'تأكيد الاسترداد'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showModal && selectedUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className={`rounded-xl shadow-xl p-8 max-w-md w-full relative ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
@@ -829,6 +1188,7 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+      <Toaster position="top-center" />
     </div>
   );
 } 
