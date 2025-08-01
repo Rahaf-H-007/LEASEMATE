@@ -42,19 +42,30 @@ export default function SupportChatPage() {
     (n) => !n.isRead && n.type === 'SUPPORT_MESSAGE_TO_USER'
   ).length;
 
-  // Check if user is authenticated
+  // Check if user is authenticated (allow blocked users to access support)
   useEffect(() => {
+    console.log('🔍 Support chat auth check:', { user: user?._id, isLoading, isBlocked: user?.isBlocked });
+    
     if (!isLoading && !user) {
+      console.log('❌ No user found, redirecting to login');
       router.push('/auth/login');
       return;
     }
+    
     if (user && user.role === 'admin') {
+      console.log('👨‍💼 Admin user, redirecting to admin dashboard');
       router.push('/admin/dashboard');
       return;
     }
+    
+    if (user && user.isBlocked) {
+      console.log('🚫 Blocked user accessing support chat - ALLOWED');
+    }
+    
+    console.log('✅ User authenticated and allowed to access support chat');
   }, [user, isLoading, router]);
 
-  // Initialize chat and join room - consolidated into one useEffect
+  // Initialize chat and join room - consolidated into one useEffect (allow blocked users)
   useEffect(() => {
     if (!user || user.role === 'admin') return;
 
