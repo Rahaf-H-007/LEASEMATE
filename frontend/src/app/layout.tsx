@@ -5,6 +5,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { NotificationsProvider } from "@/contexts/NotificationsContext";
 import { MessagesProvider } from "@/contexts/MessagesContext";
+import BlockGuard from "@/components/BlockGuard";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -42,11 +43,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ThemeProvider>
           <AuthProvider>
-            <NotificationsProvider>
-              <MessagesProvider>
-                {children}
-              </MessagesProvider>
-            </NotificationsProvider>
+            <BlockGuard>
+              <NotificationsProvider>
+                <MessagesProvider>
+                  {children}
+                </MessagesProvider>
+              </NotificationsProvider>
+            </BlockGuard>
           </AuthProvider>
         </ThemeProvider>
       </body>
