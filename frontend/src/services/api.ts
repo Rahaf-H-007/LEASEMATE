@@ -609,6 +609,18 @@ if (params.governorate)
     );
   }
 
+  // Admin: Get pending units with full details
+  async getPendingUnitsWithDetails(token: string) {
+    return this.request<{ status: string; data: { pendingUnits: any[] } }>(
+      "/units/admin/pending-units",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+  }
+
   // Admin: Approve or reject a unit image
   async reviewUnitImage({
     unitId,
@@ -725,15 +737,42 @@ if (params.governorate)
     });
   }
 
-  // Admin: Block a user
-  async blockUser(userId: string, token: string) {
-    return this.request<{ message: string }>(`/admin/users/${userId}/block`, {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+  // Admin: Get available units
+  async getAvailableUnits(token: string) {
+    return this.request<{ status: string; data: { units: any[] } }>(
+      "/units/admin/available-units",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
   }
+
+  // Admin: Get maintenance units
+  async getMaintenanceUnits(token: string) {
+    return this.request<{ status: string; data: { units: any[] } }>(
+      "/units/admin/maintenance-units",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+  }
+
+  // Admin: Get booked units with lease information
+  async getBookedUnits(token: string) {
+    return this.request<{ status: string; data: { units: any[] } }>(
+      "/units/admin/booked-units",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+  }
+
 
   // Admin: Get all subscriptions
   async getSubscriptions(token: string) {
