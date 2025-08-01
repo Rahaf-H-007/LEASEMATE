@@ -8,6 +8,7 @@ const deleteFromCloudinary = require("../utils/deleteFromCloudinary");
 const extractPublicId = require("../utils/extractPublicId");
 const notificationService = require("../services/notification.service");
 const User = require("../models/user.model");
+const Lease = require("../models/lease.model");
 
 const getAllUnits = asyncWrapper(async (req, res) => {
   const {
@@ -368,6 +369,49 @@ const getPendingUnitImages = asyncWrapper(async (req, res) => {
     .json({ status: httpStatusText.SUCCESS, data: { pendingUnits } });
 });
 
+// جلب كل الشقق المعلقة مع تفاصيلها الكاملة
+const getPendingUnitsWithDetails = asyncWrapper(async (req, res) => {
+  // اجلب كل الشقق التي بها صورة واحدة على الأقل حالتها pending
+  const units = await Unit.find(
+    { "images.status": "pending" }
+  ).populate("ownerId", "name phone username email verificationStatus");
+
+  // لكل شقة، اجلب فقط الصور pending مع تفاصيل الوحدة الكاملة
+  const pendingUnits = units
+    .map((unit) => ({
+      unitId: unit._id,
+      unitName: unit.name,
+      description: unit.description,
+      pricePerMonth: unit.pricePerMonth,
+      securityDeposit: unit.securityDeposit,
+      address: unit.address,
+      city: unit.city,
+      governorate: unit.governorate,
+      postalCode: unit.postalCode,
+      numRooms: unit.numRooms,
+      space: unit.space,
+      type: unit.type,
+      isFurnished: unit.isFurnished,
+      hasPool: unit.hasPool,
+      hasAC: unit.hasAC,
+      hasTV: unit.hasTV,
+      hasWifi: unit.hasWifi,
+      hasKitchenware: unit.hasKitchenware,
+      hasHeating: unit.hasHeating,
+      status: unit.status,
+      rejectionReason: unit.rejectionReason,
+      createdAt: unit.createdAt,
+      updatedAt: unit.updatedAt,
+      owner: unit.ownerId,
+      images: unit.images.filter((img) => img.status === "pending"),
+    }))
+    .filter((unit) => unit.images.length > 0);
+
+  res
+    .status(200)
+    .json({ status: httpStatusText.SUCCESS, data: { pendingUnits } });
+});
+
 // موافقة الأدمن على كل صور الشقة دفعة واحدة
 const approveAllUnitImages = asyncWrapper(async (req, res, next) => {
   const { unitId } = req.body;
@@ -630,6 +674,56 @@ const canAddUnit = asyncWrapper(async (req, res, next) => {
   return res.json({ status: httpStatusText.SUCCESS, canAdd: true });
 });
 
+// جلب الشقق المتاحة
+const getAvailableUnits = asyncWrapper(async (req, res) => {
+  const units = await Unit.find({ status: 'available' })
+    .populate('ownerId', 'name phone email')
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    status: httpStatusText.SUCCESS,
+    data: { units }
+  });
+});
+
+// جلب الشقق تحت الصيانة
+const getMaintenanceUnits = asyncWrapper(async (req, res) => {
+  const units = await Unit.find({ status: 'under maintenance' })
+    .populate('ownerId', 'name phone email')
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    status: httpStatusText.SUCCESS,
+    data: { units }
+  });
+});
+
+// جلب الشقق المحجوزة مع معلومات العقد
+const getBookedUnits = asyncWrapper(async (req, res) => {
+  const units = await Unit.find({ status: 'booked' })
+    .populate('ownerId', 'name phone email')
+    .sort({ createdAt: -1 });
+
+  // جلب معلومات العقود لكل شقة محجوزة
+  const unitsWithLeases = await Promise.all(
+    units.map(async (unit) => {
+      const lease = await Lease.findOne({ unitId: unit._id })
+        .populate('tenantId', 'name phone email')
+        .populate('landlordId', 'name phone email');
+      
+      return {
+        ...unit.toObject(),
+        lease: lease || null
+      };
+    })
+  );
+
+  res.status(200).json({
+    status: httpStatusText.SUCCESS,
+    data: { units: unitsWithLeases }
+  });
+});
+
 module.exports = {
   getAllUnits,
   getUnit,
@@ -639,6 +733,7 @@ module.exports = {
   deleteUnitImage,
   getMyUnits,
   getPendingUnitImages,
+  getPendingUnitsWithDetails,
   reviewUnitImage,
   approveUnit,
   rejectUnit,
@@ -646,4 +741,7 @@ module.exports = {
   rejectAllUnitImages,
   resubmitRejectedUnit,
   canAddUnit,
+  getAvailableUnits,
+  getMaintenanceUnits,
+  getBookedUnits,
 };
