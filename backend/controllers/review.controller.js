@@ -75,27 +75,73 @@ exports.createReview = async (req, res) => {
 
     // إذا كان التعليق مسيء، زيادة العداد للمراجع
     if (abusive) {
-      await User.findByIdAndUpdate(reviewerId, { $inc: { abusiveCommentsCount: 1 } });
-      // إرسال إشعار تحذيري (يمكنك تعديل نص الرسالة حسب الحاجة)
-      const notificationService = require('../services/notification.service');
-      const notification = await notificationService.createNotification({
-        userId: reviewerId,
-        senderId: null,
-        type: 'ABUSIVE_COMMENT_WARNING',
-        title: 'تحذير من التعليقات المسيئة',
-        message: 'لقد قمت بكتابة تعليق مسيء. تكرار ذلك قد يؤدي إلى حظرك من المنصة.',
-        isRead: false
-      });
+      // زيادة العداد أولاً
+      const updatedUser = await User.findByIdAndUpdate(
+        reviewerId, 
+        { $inc: { abusiveCommentsCount: 1 } },
+        { new: true }
+      );
 
-      // إرسال الإشعار عبر Socket.io للعرض الفوري
-      const io = req.app.get('io');
-      if (io) {
-        console.log('📡 Emitting abusive comment warning to user:', reviewerId);
-        const populatedNotification = await notification.populate('senderId', 'name avatarUrl');
-        io.to(reviewerId).emit('newNotification', populatedNotification);
-        console.log('✅ Abusive comment warning emitted successfully');
+      // التحقق من عدد التعليقات المسيئة
+      const abusiveCount = updatedUser.abusiveCommentsCount;
+      
+      if (abusiveCount >= 2) {
+        // حظر المستخدم تلقائياً بعد التعليق المسيء الثاني
+        await User.findByIdAndUpdate(reviewerId, { isBlocked: true });
+        
+        // إرسال إشعار الحظر
+        const notificationService = require('../services/notification.service');
+        const blockNotification = await notificationService.createNotification({
+          userId: reviewerId,
+          senderId: null,
+          type: 'USER_BLOCKED',
+          title: 'تم حظر حسابك',
+          message: 'تم حظر حسابك تلقائياً بسبب تكرار التعليقات المسيئة. يمكنك التواصل مع الدعم الفني للمراجعة.',
+          isRead: false
+        });
+
+        // إرسال إشعار الحظر عبر Socket.io
+        const io = req.app.get('io');
+        if (io) {
+          console.log('📡 Emitting user blocked notification to user:', reviewerId);
+          const populatedBlockNotification = await blockNotification.populate('senderId', 'name avatarUrl');
+          io.to(reviewerId).emit('newNotification', populatedBlockNotification);
+          
+          // إرسال حدث الحظر الفوري للمستخدم
+          console.log('🚫 Emitting real-time user blocked event to user:', reviewerId);
+          io.to(reviewerId).emit('userBlocked', {
+            userId: reviewerId,
+            isBlocked: true,
+            reason: 'تكرار التعليقات المسيئة',
+            timestamp: new Date()
+          });
+          
+          console.log('✅ User blocked notification and real-time event emitted successfully');
+        } else {
+          console.error('❌ Socket.io instance not available for user blocked notification');
+        }
       } else {
-        console.error('❌ Socket.io instance not available for abusive comment warning');
+        // إرسال إشعار تحذيري للمرة الأولى
+        const notificationService = require('../services/notification.service');
+        const warningNotification = await notificationService.createNotification({
+          userId: reviewerId,
+          senderId: null,
+          type: 'ABUSIVE_COMMENT_WARNING',
+          title: 'تحذير من التعليقات المسيئة',
+          message: `لقد قمت بكتابة تعليق مسيء. هذا تحذيرك الأول. التعليق المسيء التالي سيؤدي إلى حظر حسابك تلقائياً.`,
+          isRead: false
+        });
+
+        // إرسال الإشعار عبر Socket.io للعرض الفوري
+        const io = req.app.get('io');
+        if (io) {
+          console.log('📡 Emitting abusive comment warning to user:', reviewerId);
+          const populatedWarningNotification = await warningNotification.populate('senderId', 'name avatarUrl');
+          io.to(reviewerId).emit('newNotification', populatedWarningNotification);
+          console.log('✅ Abusive comment warning emitted successfully');
+        } else {
+          console.error('❌ Socket.io instance not available for abusive comment warning');
+        }
       }
     }
 
