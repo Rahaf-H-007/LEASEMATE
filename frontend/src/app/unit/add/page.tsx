@@ -107,45 +107,153 @@ export default function AddUnitPage() {
 
   const [errors, setErrors] = useState<ValidationErrors>({});
 
-  // Define checkCanAddUnit so it can be used in both effects
-  const checkCanAddUnit = async () => {
-    if (user && user.role === 'landlord') {
-      try {
-        const authToken = token || localStorage.getItem('leasemate_token');
-        if (!authToken) return;
-        const res = await apiService.canAddUnit(authToken);
-        setCanAddUnit(res.canAdd);
-        setAddUnitReason(res.reason || "");
-      } catch (err) {
-        // Optionally handle error
+  // Cache configuration
+  const CACHE_KEYS = {
+    CAN_ADD_UNIT: `canAddUnit_${user?._id}`,
+    ADD_UNIT_REASON: `addUnitReason_${user?._id}`,
+    CACHE_TIMESTAMP: `canAddUnitTimestamp_${user?._id}`
+  };
+
+  const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
+
+  // Cache utility functions
+  const isCacheValid = () => {
+    const timestamp = localStorage.getItem(CACHE_KEYS.CACHE_TIMESTAMP);
+    if (!timestamp) return false;
+    return Date.now() - parseInt(timestamp) < CACHE_EXPIRY_MS;
+  };
+
+  const loadFromCache = () => {
+    if (!user || !isCacheValid()) return false;
+    
+    const cachedCanAdd = localStorage.getItem(CACHE_KEYS.CAN_ADD_UNIT);
+    const cachedReason = localStorage.getItem(CACHE_KEYS.ADD_UNIT_REASON);
+    
+    if (cachedCanAdd !== null) {
+      setCanAddUnit(JSON.parse(cachedCanAdd));
+      setAddUnitReason(cachedReason || "");
+      return true;
+    }
+    return false;
+  };
+
+  const saveToCache = (canAdd: boolean, reason: string) => {
+    if (!user) return;
+    localStorage.setItem(CACHE_KEYS.CAN_ADD_UNIT, JSON.stringify(canAdd));
+    localStorage.setItem(CACHE_KEYS.ADD_UNIT_REASON, reason);
+    localStorage.setItem(CACHE_KEYS.CACHE_TIMESTAMP, Date.now().toString());
+  };
+
+  // Enhanced checkCanAddUnit with caching
+  const checkCanAddUnit = async (skipCache = false) => {
+    if (!user || user.role !== 'landlord') {
+      const canAdd = false;
+      const reason = "هذه الصفحة متاحة فقط لأصحاب العقارات";
+      setCanAddUnit(canAdd);
+      setAddUnitReason(reason);
+      if (!skipCache) saveToCache(canAdd, reason);
+      return;
+    }
+
+    try {
+      const authToken = token || localStorage.getItem('leasemate_token');
+      if (!authToken) {
+        const canAdd = false;
+        const reason = "لم يتم العثور على رمز المصادقة";
+        setCanAddUnit(canAdd);
+        setAddUnitReason(reason);
+        if (!skipCache) saveToCache(canAdd, reason);
+        return;
       }
+
+      const res = await apiService.canAddUnit(authToken);
+      setCanAddUnit(res.canAdd);
+      setAddUnitReason(res.reason || "");
+      
+      // Save to cache for future visits
+      if (!skipCache) {
+        saveToCache(res.canAdd, res.reason || "");
+      }
+    } catch (err) {
+      console.error("Error checking canAddUnit:", err);
+      const canAdd = false;
+      const reason = "حدث خطأ في التحقق من إمكانية إضافة الوحدة";
+      setCanAddUnit(canAdd);
+      setAddUnitReason(reason);
+      if (!skipCache) saveToCache(canAdd, reason);
     }
   };
 
-  // Listen for unitStatusChanged events from the shared socket
+  // WebSocket listeners for real-time updates
   useEffect(() => {
-    if (!socket) return;
-    const handler = (data: { status: string }) => {
-      checkCanAddUnit();
+    if (!socket || !user) return;
+
+    const handleUnitStatusChanged = async (data: { status: string }) => {
+      console.log(" Unit status changed via WebSocket:", data);
+      // Refresh canAddUnit status when unit status changes
+      await checkCanAddUnit();
+      
+      // Show toast notification
       toast("تم تحديث حالة الوحدة: " + (data.status === 'approved' ? 'تمت الموافقة' : data.status === 'rejected' ? 'تم الرفض' : data.status), {
         icon: data.status === 'approved' ? '✅' : data.status === 'rejected' ? '❌' : 'ℹ️',
       });
     };
-    socket.on("unitStatusChanged", handler);
+
+    const handleSubscriptionChanged = async () => {
+      console.log(" Subscription changed via WebSocket");
+      // Refresh user data and canAddUnit status
+      await Promise.all([refreshUser(), checkCanAddUnit()]);
+      toast.success("تم تحديث حالة الاشتراك");
+    };
+
+    // Listen for WebSocket events
+    socket.on("unitStatusChanged", handleUnitStatusChanged);
+    socket.on("subscriptionUpdated", handleSubscriptionChanged);
+    socket.on("subscriptionExpired", handleSubscriptionChanged);
+
     return () => {
-      socket.off("unitStatusChanged", handler);
+      socket.off("unitStatusChanged", handleUnitStatusChanged);
+      socket.off("subscriptionUpdated", handleSubscriptionChanged);
+      socket.off("subscriptionExpired", handleSubscriptionChanged);
     };
-  }, [socket]);
+  }, [socket, user, token]);
 
+  // Main initialization with cache + background refresh
   useEffect(() => {
-    // Always refresh user data on mount to get latest subscription info
-    const doRefresh = async () => {
-      await refreshUser();
-      setLoading(false);
-    };
-    doRefresh();
+    const initializePage = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-    checkCanAddUnit();
+      // Try to load from cache first for instant display
+      const cacheLoaded = loadFromCache();
+      if (cacheLoaded) {
+        console.log(" Loaded canAddUnit from cache - instant display!");
+        setLoading(false);
+        
+        // Refresh in background to ensure data is current
+        setTimeout(async () => {
+          console.log(" Background refresh started...");
+          await Promise.all([refreshUser(), checkCanAddUnit()]);
+        }, 100);
+        return;
+      }
+
+      // No valid cache available, do full load
+      console.log(" No cache found, loading fresh data...");
+      try {
+        await Promise.all([refreshUser(), checkCanAddUnit()]);
+      } catch (error) {
+        console.error(" Error during initialization:", error);
+        setCanAddUnit(false);
+        setAddUnitReason("حدث خطأ في التحقق من إمكانية إضافة الوحدة");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializePage();
   }, [user, token, refreshUser]);
 
   // Conditional rendering after all hooks
@@ -446,6 +554,12 @@ export default function AddUnitPage() {
 
       console.log("Unit created successfully:", createdUnit);
 
+      // Show success toast immediately after unit creation
+      toast.success("تم إرسال إعلانك بنجاح! إعلانك الآن قيد المراجعة من الأدمن.", {
+        duration: 4000,
+        position: "top-center",
+      });
+
       // After successful submission, re-fetch canAddUnit to update UI
       const authToken = token || localStorage.getItem('leasemate_token');
       if (authToken) {
@@ -480,12 +594,6 @@ export default function AddUnitPage() {
         hasHeating: false,
       });
       setErrors({});
-
-      // Show a toast for success
-      toast.success("تم إرسال إعلانك بنجاح! إعلانك الآن قيد المراجعة من الأدمن.", {
-        duration: 4000,
-        position: "top-center",
-      });
     } catch (error) {
       console.error("Error saving unit:", error);
       if (error instanceof Error) {
@@ -528,9 +636,70 @@ export default function AddUnitPage() {
           }, 2000);
           return;
         }
+        
+        // Check for pending unit error (unit under review)
+        if (error.message.includes("مراجعة وحدتك الحالية") || error.message.includes("قيد المراجعة")) {
+          toast.error("لا يمكنك إضافة وحدة جديدة أثناء مراجعة وحدتك الحالية. يرجى انتظار موافقة الإدارة.", {
+            duration: 4000,
+            position: "top-center",
+            style: {
+              background: "#F59E0B",
+              color: "#fff",
+              fontWeight: "bold",
+              padding: "16px",
+              borderRadius: "8px",
+            },
+          });
+          setTimeout(() => {
+            router.push("/my-units");
+          }, 2000);
+          return;
+        }
+        
+        // Check for rejected unit error (unit was rejected)
+        if (error.message.includes("تحديث الوحدة المرفوضة") || error.message.includes("مرفوضة")) {
+          toast.error("لا يمكنك إضافة وحدة جديدة حتى تقوم بتحديث أو حذف الوحدة المرفوضة.", {
+            duration: 4000,
+            position: "top-center",
+            style: {
+              background: "#EF4444",
+              color: "#fff",
+              fontWeight: "bold",
+              padding: "16px",
+              borderRadius: "8px",
+            },
+          });
+          setTimeout(() => {
+            router.push("/my-units");
+          }, 2000);
+          return;
+        }
+        
+        // Check for maintenance unit error
+        if (error.message.includes("تحت الصيانة")) {
+          toast.error("لا يمكنك إضافة وحدة جديدة أثناء وجود وحدة تحت الصيانة.", {
+            duration: 4000,
+            position: "top-center",
+            style: {
+              background: "#F59E0B",
+              color: "#fff",
+              fontWeight: "bold",
+              padding: "16px",
+              borderRadius: "8px",
+            },
+          });
+          setTimeout(() => {
+            router.push("/my-units");
+          }, 2000);
+          return;
+        }
       }
 
-    toast.error("حدث خطأ أثناء حفظ الوحدة. حاول مرة أخرى.");
+      // Generic error message for any other errors
+      toast.error("حدث خطأ أثناء حفظ الوحدة. حاول مرة أخرى.", {
+        duration: 3000,
+        position: "top-center",
+      });
   } finally {
     setIsSubmitting(false);
   }
