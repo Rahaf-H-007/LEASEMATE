@@ -25,7 +25,7 @@ const BlockedUserScreen: React.FC = () => {
 
   return (
     <div className={`min-h-screen flex items-center justify-center p-4 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      <div className={`max-w-md w-full rounded-2xl shadow-2xl p-8 text-center ${isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+      <div className={`max-w-lg w-full rounded-2xl shadow-2xl p-8 text-center ${isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
         {/* Logo */}
         <div className="flex justify-center mb-6">
           <Logo size={80} />
