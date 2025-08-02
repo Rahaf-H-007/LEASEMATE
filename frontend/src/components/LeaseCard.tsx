@@ -133,7 +133,7 @@ const LeaseCard: React.FC<LeaseCardProps> = ({
         {/* الأزرار */}
         <div className="space-y-2">
           <button
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+            className="w-full bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
             onClick={() => onView(lease._id)}
           >
             مراجعة العقد
