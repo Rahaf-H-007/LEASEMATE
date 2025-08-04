@@ -8,6 +8,8 @@ router.post('/get-or-create', chatController.getOrCreateChat);
 router.post('/create-with-message', chatController.createChatWithFirstMessage);
 // التحقق من وجود محادثة
 router.get('/check/:tenantId/:landlordId/:unitId', chatController.checkChatExists);
+// البحث عن محادثة عامة بين مستخدمين
+router.get('/find-general/:userId1/:userId2', chatController.findGeneralChat);
 // جلب رسائل محادثة
 router.get('/:chatId/messages', chatController.getMessages);
 // إرسال رسالة
