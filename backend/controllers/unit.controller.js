@@ -37,9 +37,9 @@ const getAllUnits = asyncWrapper(async (req, res) => {
     status: { $in: ["available", "approved"] }, // دعم مؤقت للشقق القديمة
   };
 
-  // if (req.query.ownerId) {
-  //   filter.ownerId = req.query.ownerId;
-  // }
+  if (req.query.ownerId) {
+    filter.ownerId = req.query.ownerId;
+  }
 
   if (search && search.trim()) {
     // Escape special regex characters to prevent regex errors
