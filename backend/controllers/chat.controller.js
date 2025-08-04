@@ -101,21 +101,56 @@ exports.getLandlordChats = async (req, res) => {
 exports.createChatWithFirstMessage = async (req, res) => {
   try {
     const { tenantId, landlordId, unitId, senderId, text } = req.body;
-    // تحقق من البيانات المطلوبة
-    if (!tenantId || !landlordId || !unitId || !senderId || !text) {
+    
+    console.log('Creating chat with data:', { tenantId, landlordId, unitId, senderId, text: text?.substring(0, 50) });
+    
+    // تحقق من البيانات المطلوبة - unitId يمكن أن يكون 'profile' للشات من البروفايل
+    if (!tenantId || !landlordId || !senderId || !text) {
+      console.log('Missing required fields:', { tenantId: !!tenantId, landlordId: !!landlordId, senderId: !!senderId, text: !!text });
       return res.status(400).json({ error: 'جميع الحقول مطلوبة' });
     }
+    
     // تحقق ألا يوجد شات سابق
-    let chat = await Chat.findOne({ tenant: tenantId, landlord: landlordId, unit: unitId });
+    let chatQuery = { tenant: tenantId, landlord: landlordId };
+    if (unitId && unitId !== 'profile') {
+      chatQuery.unit = unitId;
+    } else {
+      chatQuery.unit = { $exists: false };
+    }
+    
+    console.log('Checking for existing chat with query:', chatQuery);
+    
+    let chat = await Chat.findOne(chatQuery);
     if (chat) {
+      console.log('Chat already exists:', chat._id);
       return res.status(400).json({ error: 'المحادثة موجودة بالفعل' });
     }
+    
     // أنشئ الشات
-    chat = await Chat.create({ tenant: tenantId, landlord: landlordId, unit: unitId, lastMessage: text, lastMessageAt: new Date() });
+    const chatData = { 
+      tenant: tenantId, 
+      landlord: landlordId, 
+      lastMessage: text, 
+      lastMessageAt: new Date() 
+    };
+    
+    // إضافة unit فقط إذا كان له قيمة حقيقية وليس 'profile'
+    if (unitId && unitId !== 'profile') {
+      chatData.unit = unitId;
+    }
+    
+    console.log('Creating chat with data:', chatData);
+    
+    chat = await Chat.create(chatData);
+    console.log('Chat created successfully:', chat._id);
+    
     // أضف أول رسالة
     const message = await Message.create({ chat: chat._id, sender: senderId, text });
+    console.log('Message created successfully:', message._id);
+    
     res.json({ chatId: chat._id, message });
   } catch (error) {
+    console.error('Error creating chat with message:', error);
     res.status(500).json({ error: 'حدث خطأ أثناء إنشاء المحادثة' });
   }
 };
@@ -129,11 +164,14 @@ exports.checkChatExists = async (req, res) => {
       return res.status(400).json({ error: 'جميع المعاملات مطلوبة' });
     }
 
-    const chat = await Chat.findOne({ 
-      tenant: tenantId, 
-      landlord: landlordId, 
-      unit: unitId 
-    });
+    let chatQuery = { tenant: tenantId, landlord: landlordId };
+    if (unitId && unitId !== 'profile') {
+      chatQuery.unit = unitId;
+    } else {
+      chatQuery.unit = { $exists: false };
+    }
+    
+    const chat = await Chat.findOne(chatQuery);
 
     if (chat) {
       // تحقق من وجود رسائل في المحادثة
@@ -156,5 +194,51 @@ exports.checkChatExists = async (req, res) => {
   } catch (error) {
     console.error('Error checking chat existence:', error);
     res.status(500).json({ error: 'حدث خطأ أثناء التحقق من وجود المحادثة' });
+  }
+};
+
+// البحث عن محادثة عامة موجودة بين مستخدمين (بدون وحدة)
+exports.findGeneralChat = async (req, res) => {
+  try {
+    const { userId1, userId2 } = req.params;
+    
+    if (!userId1 || !userId2) {
+      return res.status(400).json({ error: 'معرفات المستخدمين مطلوبة' });
+    }
+
+    // البحث عن محادثة عامة (بدون وحدة) بين المستخدمين
+    // يمكن أن يكون أي منهما مستأجر أو مالك
+    const chat = await Chat.findOne({
+      $or: [
+        { tenant: userId1, landlord: userId2, unit: { $exists: false } },
+        { tenant: userId2, landlord: userId1, unit: { $exists: false } }
+      ]
+    });
+
+    if (chat) {
+      // تحقق من وجود رسائل في المحادثة
+      const messageCount = await Message.countDocuments({ chat: chat._id });
+      
+      res.json({ 
+        exists: true, 
+        chatId: chat._id,
+        hasMessages: messageCount > 0,
+        messageCount,
+        tenant: chat.tenant,
+        landlord: chat.landlord
+      });
+    } else {
+      res.json({ 
+        exists: false, 
+        chatId: null,
+        hasMessages: false,
+        messageCount: 0,
+        tenant: null,
+        landlord: null
+      });
+    }
+  } catch (error) {
+    console.error('Error finding general chat:', error);
+    res.status(500).json({ error: 'حدث خطأ أثناء البحث عن المحادثة العامة' });
   }
 };  
