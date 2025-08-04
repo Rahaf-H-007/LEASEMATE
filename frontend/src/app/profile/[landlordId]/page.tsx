@@ -1,20 +1,31 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { apiService } from "@/services/api";
 import Link from "next/link";
+import { MessageCircle } from "lucide-react";
+import ChatBox from "@/components/ChatBox";
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function UserProfilePage() {
   const { landlordId } = useParams();
-  const [user, setUser] = useState<any>(null);
+  const router = useRouter();
+  const { user } = useAuth();
+  
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [units, setUnits] = useState<any[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [unitsError, setUnitsError] = useState<string | null>(null);
   const [reviewsError, setReviewsError] = useState<string | null>(null);
+  
+  // Chat states
+  const [showChat, setShowChat] = useState(false);
+  const [chatId, setChatId] = useState<string | null>(null);
+  const [isCheckingChat, setIsCheckingChat] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -33,7 +44,7 @@ export default function UserProfilePage() {
         let userRes: any;
         try {
           userRes = await apiService.getUserById(landlordId);
-          setUser(userRes.data || userRes); // fallback if .data missing
+          setUserProfile(userRes.data || userRes); // fallback if .data missing
         } catch (err: any) {
           if (err.message?.includes("404") || err.message?.includes("not found") || err.message?.includes("User not found")) {
             setError("لم يتم العثور على المستخدم.");
@@ -49,8 +60,14 @@ export default function UserProfilePage() {
         if (userRes.data?.role === 'landlord' || userRes.role === 'landlord') {
           try {
             const unitsRes: any = await apiService.getUnitsByLandlord(landlordId);
-            setUnits(unitsRes.data?.units || unitsRes.units || []);
+            const fetchedUnits = unitsRes.data?.units || unitsRes.units || [];
+            // Filter to only show available and approved units
+            const filteredUnits = fetchedUnits.filter((unit: any) => 
+              unit.status === 'available' || unit.status === 'approved'
+            );
+            setUnits(filteredUnits);
           } catch (err: any) {
+            console.error('Error fetching units:', err);
             setUnitsError("تعذر جلب وحدات المستخدم.");
           }
         }
@@ -69,6 +86,43 @@ export default function UserProfilePage() {
     };
     fetchData();
   }, [landlordId]);
+
+  // فتح الشات مباشرة بين المستأجر والمالك
+  const handleOpenChat = async () => {
+    if (!user || !userProfile || !landlordId) return;
+    
+    // لا تسمح بالشات مع نفس الشخص
+    if (user._id === landlordId) return;
+    
+    setIsCheckingChat(true);
+    
+    try {
+      // البحث عن محادثة عامة موجودة بين المستخدمين
+      const response = await fetch(`http://localhost:5000/api/chat/find-general/${user._id}/${landlordId}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.exists && data.chatId) {
+        // إذا وجدت محادثة عامة، انتقل إلى صفحة الرسائل وافتح المحادثة
+        console.log('Found existing general chat, redirecting to messages page');
+        router.push(`/dashboard/messages?chatId=${data.chatId}`);
+      } else {
+        // إذا لم توجد محادثة عامة، افتح شات بوكس جديد
+        console.log('No existing general chat found, opening new chat box');
+        setShowChat(true);
+      }
+    } catch (error) {
+      console.error('Error checking for existing chat:', error);
+      // في حالة الخطأ، افتح شات بوكس جديد
+      setShowChat(true);
+    } finally {
+      setIsCheckingChat(false);
+    }
+  };
 
   // Calculate sentiment distribution based on database sentiment field
   let positive = 0;
@@ -138,13 +192,16 @@ export default function UserProfilePage() {
     );
   }
 
-  if (error || !user) {
+  if (error || !userProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-orange-50 dark:bg-stone-900">
         <span className="text-red-600 dark:text-red-300 text-lg">{error || "لم يتم العثور على المستخدم"}</span>
       </div>
     );
   }
+
+  // التحقق من إمكانية عرض زر الشات
+  const canShowChat = user && user._id !== landlordId;
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-orange-100/80 via-amber-100/60 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 overflow-x-hidden">
@@ -160,16 +217,16 @@ export default function UserProfilePage() {
             <div className="relative">
               <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-28 h-2 bg-gradient-to-r from-orange-400 via-amber-400 to-orange-500 rounded-full blur-sm opacity-60" />
               <div className="w-28 h-28 rounded-full bg-gradient-to-tr from-orange-200 via-amber-200 to-white dark:from-orange-900 dark:via-amber-900 dark:to-gray-900 p-1 shadow-xl mx-auto flex items-center justify-center relative">
-                {user.avatarUrl ? (
-                  <img src={user.avatarUrl} alt="الصورة الشخصية" className="w-24 h-24 rounded-full object-cover border-4 border-white dark:border-gray-900 shadow-lg" />
+                {userProfile.avatarUrl ? (
+                  <img src={userProfile.avatarUrl} alt="الصورة الشخصية" className="w-24 h-24 rounded-full object-cover border-4 border-white dark:border-gray-900 shadow-lg" />
                 ) : (
                   <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center text-4xl text-orange-500 font-bold shadow-lg">
-                    {user.name?.charAt(0) || '?'}
+                    {userProfile.name?.charAt(0) || '?'}
                   </div>
                 )}
               </div>
             </div>
-            <h1 className="text-3xl font-extrabold text-orange-600 dark:text-orange-400 tracking-tight mt-2">{user.name}</h1>
+            <h1 className="text-3xl font-extrabold text-orange-600 dark:text-orange-400 tracking-tight mt-2">{userProfile.name}</h1>
             {/* Overall Star Rating */}
             <div className="flex items-center gap-2">
               <div className="flex items-center">
@@ -180,7 +237,7 @@ export default function UserProfilePage() {
               </span>
             </div>
             <span className="inline-block bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-300 px-4 py-1 rounded-full font-semibold text-base shadow-sm mt-1">
-              {user.role === 'landlord' ? 'مالك عقار' : user.role === 'tenant' ? 'مستأجر' : user.role}
+              {userProfile.role === 'landlord' ? 'مالك عقار' : userProfile.role === 'tenant' ? 'مستأجر' : userProfile.role}
             </span>
           </div>
           <div className="space-y-6">
@@ -188,23 +245,23 @@ export default function UserProfilePage() {
             <div className="flex items-center gap-2">
               <span className="text-xl font-medium text-gray-700 dark:text-gray-200">حالة التحقق:</span>
               <span className={
-                user.verificationStatus?.status === 'approved'
+                userProfile.verificationStatus?.status === 'approved'
                   ? 'text-xl font-medium text-green-600 dark:text-green-400'
-                  : user.verificationStatus?.status === 'pending'
+                  : userProfile.verificationStatus?.status === 'pending'
                   ? 'text-xl font-medium text-yellow-600 dark:text-yellow-400'
                   : 'text-xl font-medium text-red-600 dark:text-red-400'
               }>
-                {user.verificationStatus?.status === 'approved'
+                {userProfile.verificationStatus?.status === 'approved'
                   ? 'تم التحقق'
-                  : user.verificationStatus?.status === 'pending'
+                  : userProfile.verificationStatus?.status === 'pending'
                   ? 'قيد الانتظار'
-                  : user.verificationStatus?.status === 'rejected'
+                  : userProfile.verificationStatus?.status === 'rejected'
                   ? 'مرفوض'
                   : 'غير معروف'}
               </span>
             </div>
             {/* Units Section - Only for landlords */}
-            {user.role === 'landlord' && (
+            {userProfile.role === 'landlord' && (
               <div className="mt-12">
                 <h2 className="text-2xl font-bold text-orange-600 dark:text-orange-400 mb-6">الوحدات المملوكة</h2>
                 {unitsError && <div className="text-red-600 dark:text-red-400 text-center mb-4">{unitsError}</div>}
@@ -240,7 +297,7 @@ export default function UserProfilePage() {
             <div className="mt-12" dir="rtl">
               <h2 className="text-2xl font-extrabold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
                 <span className="border-r-4 border-orange-400 pr-3">
-                  {user.role === 'landlord' ? 'المراجعات عن المالك' : 'المراجعات عن المستأجر'}
+                  {userProfile.role === 'landlord' ? 'المراجعات عن المالك' : 'المراجعات عن المستأجر'}
                 </span>
               </h2>
               {reviewsError && <div className="text-red-600 dark:text-red-400 text-center mb-4">{reviewsError}</div>}
@@ -335,6 +392,55 @@ export default function UserProfilePage() {
           </div>
         </main>
       </div>
+      
+             {/* Chat Button - Only show if user is logged in and not viewing their own profile */}
+       {canShowChat && (
+         <div className="fixed bottom-6 right-6 z-50">
+           <button
+             onClick={handleOpenChat}
+             disabled={isCheckingChat}
+             className={`fixed bottom-8 right-8 z-50 bg-orange-500 hover:bg-orange-600 text-white rounded-full p-4 shadow-lg flex items-center justify-center group transition-all duration-200 ${
+               isCheckingChat ? 'opacity-75 cursor-not-allowed' : ''
+             }`}
+             aria-label="Chat with user"
+           >
+             {isCheckingChat ? (
+               <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-white"></div>
+             ) : (
+               <MessageCircle className="w-7 h-7" />
+             )}
+             <span
+               className="absolute right-16 bottom-1/2 translate-y-1/2 bg-orange-600 text-white font-bold px-4 py-2 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 pointer-events-none whitespace-nowrap"
+               style={{ minWidth: 'max-content' }}
+             >
+               {isCheckingChat ? 'جاري البحث عن محادثة...' : `التواصل مع ${userProfile.name}`}
+             </span>
+           </button>
+         </div>
+       )}
+      
+      {/* Chat Modal */}
+      {showChat && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-4 w-full max-w-md relative">
+            <button
+              className="absolute top-2 left-2 text-gray-500 hover:text-gray-800"
+              onClick={() => setShowChat(false)}
+            >✕</button>
+            <h2 className="text-lg font-bold mb-2 text-center">محادثة مع {userProfile.name}</h2>
+            <ChatBox
+              chatId={chatId}
+              setChatId={setChatId}
+              userId={user?._id}
+              receiverId={landlordId as string}
+              unitId=""
+              receiverName={userProfile.name}
+              userRole={user?.role}
+              receiverRole={userProfile.role}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
