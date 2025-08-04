@@ -11,7 +11,7 @@ interface Chat {
   _id: string;
   tenant: { _id: string; name: string };
   landlord: { _id: string; name: string };
-  unit: { _id: string; name: string };
+  unit?: { _id: string; name: string };
   lastMessage: string;
   lastMessageAt: string;
   unreadCount: number;
@@ -78,6 +78,10 @@ export default function MessagesPage() {
           const targetChat = data.find((chat: Chat) => chat._id === chatIdFromUrl);
           if (targetChat) {
             setSelectedChat(targetChat);
+            // تأكد من أن السايدبار مفتوح عند اختيار محادثة محددة
+            setSidebarOpen(true);
+          } else {
+            console.warn('Chat not found in user\'s chat list:', chatIdFromUrl);
           }
         }
       });
@@ -273,7 +277,9 @@ export default function MessagesPage() {
                   onClick={() => setSelectedChat(chat)}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="font-bold truncate text-gray-900 dark:text-white">{chat.unit?.name}</div>
+                    <div className="font-bold truncate text-gray-900 dark:text-white">
+                      {chat.unit?.name || 'محادثة عامة'}
+                    </div>
                     {chat.unreadCount > 0 && chat.lastMessageSenderId !== user._id && (
                       <span className="ml-2 bg-orange-500 text-white rounded-full px-2 py-0.5 text-xs font-bold">
                         {chat.unreadCount}
@@ -309,8 +315,8 @@ export default function MessagesPage() {
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm flex items-center justify-between sticky top-0 z-10">
               <h3 className="text-lg font-bold text-orange-700 dark:text-orange-400">
                 {user.role === 'landlord'
-                  ? `محادثة مع المستأجر: ${selectedChat.tenant?.name} - الوحدة: ${selectedChat.unit?.name}`
-                  : `محادثة مع المالك: ${selectedChat.landlord?.name} - الوحدة: ${selectedChat.unit?.name}`}
+                  ? `محادثة مع المستأجر: ${selectedChat.tenant?.name}${selectedChat.unit?.name ? ` - الوحدة: ${selectedChat.unit.name}` : ''}`
+                  : `محادثة مع المالك: ${selectedChat.landlord?.name}${selectedChat.unit?.name ? ` - الوحدة: ${selectedChat.unit.name}` : ''}`}
               </h3>
               {/* زر العودة للوحة التحكم */}
               <button
