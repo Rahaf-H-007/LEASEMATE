@@ -28,7 +28,7 @@ interface SupportChat {
 export default function SupportChatPage() {
   const { user, isLoading, socket } = useAuth();
   const { theme } = useTheme();
-  const { notifications } = useNotifications();
+  const { notifications, markSingleAsRead } = useNotifications();
   const router = useRouter();
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [text, setText] = useState('');
@@ -68,6 +68,15 @@ export default function SupportChatPage() {
   // Initialize chat and join room - consolidated into one useEffect (allow blocked users)
   useEffect(() => {
     if (!user || user.role === 'admin') return;
+
+    // Mark support notifications as read when entering the page
+    const supportNotifications = notifications.filter(
+      (n) => !n.isRead && n.type === 'SUPPORT_MESSAGE_TO_USER'
+    );
+    
+    for (const notification of supportNotifications) {
+      markSingleAsRead(notification._id);
+    }
 
     const initializeChat = async () => {
       try {
@@ -146,7 +155,7 @@ export default function SupportChatPage() {
     };
 
     initializeChat();
-  }, [user?._id]); // Only depend on user ID to prevent unnecessary re-runs
+  }, [user?._id, notifications, markSingleAsRead]); // Depend on user ID, notifications, and markSingleAsRead
 
   // Join room when socket is available and chatId is set
   useEffect(() => {
@@ -154,6 +163,22 @@ export default function SupportChatPage() {
       console.log('🟢 User joining support chat room:', chatId);
       socket.emit('joinSupportChat', chatId);
       hasJoinedRoom.current = true;
+      
+      // Also fetch latest messages when joining room
+      console.log('🟢 Fetching latest messages after joining room');
+      fetch(`http://localhost:5000/api/support-chat/${chatId}/messages`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('leasemate_token')}`
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log('📨 Latest messages after joining room:', data.length, 'messages');
+        setMessages(data);
+      })
+      .catch(error => {
+        console.error('❌ Error fetching latest messages:', error);
+      });
     }
   }, [socket, chatId]);
 
@@ -164,8 +189,9 @@ export default function SupportChatPage() {
       const handleNewMessage = (msg: any) => {
         console.log('🟢 User received new support message:', msg);
         
-        // Only add message if it's for our chat
-        if (chatId && msg.chatId === chatId) {
+        // Add message if it's for our chat or if we have a chatId and the message doesn't have a specific chatId
+        if (chatId && (msg.chatId === chatId || !msg.chatId)) {
+          console.log('✅ Adding message to chat:', chatId, 'Message chatId:', msg.chatId);
           setMessages(prev => {
             // Check if message already exists to prevent duplicates
             const messageExists = prev.some(existingMsg => 
@@ -197,6 +223,35 @@ export default function SupportChatPage() {
               createdAt: msg.createdAt || new Date().toISOString()
             }];
           });
+          
+          // Mark support messages as read when receiving a message from admin
+          if (chatId && user && msg.senderId !== user._id) {
+            try {
+              fetch(`http://localhost:5000/api/support-chat/${chatId}/read`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('leasemate_token')}`
+                },
+                body: JSON.stringify({
+                  userId: user!._id
+                })
+              });
+              
+              // Mark support notifications as read
+              const supportNotifications = notifications.filter(
+                (n) => !n.isRead && n.type === 'SUPPORT_MESSAGE_TO_USER'
+              );
+              
+              for (const notification of supportNotifications) {
+                markSingleAsRead(notification._id);
+              }
+              
+              console.log('✅ Support messages and notifications marked as read after receiving message');
+            } catch (error) {
+              console.error('❌ Error marking support messages/notifications as read:', error);
+            }
+          }
         }
       };
 
@@ -205,12 +260,80 @@ export default function SupportChatPage() {
       return () => {
         socket.off('newSupportMessage', handleNewMessage);
       };
-    }, [socket, chatId]); // Only depend on socket and chatId
+    }, [socket, chatId, user, notifications, markSingleAsRead]); // Depend on socket, chatId, user, notifications, and markSingleAsRead
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Refresh messages when page becomes visible (user clicks notification)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && chatId && user) {
+        console.log('🟢 Page became visible, refreshing messages');
+        // Fetch latest messages from server
+        fetch(`http://localhost:5000/api/support-chat/${chatId}/messages`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('leasemate_token')}`
+          }
+        })
+        .then(res => res.json())
+        .then(data => {
+          console.log('📨 Refreshed messages:', data.length, 'messages');
+          setMessages(data);
+        })
+        .catch(error => {
+          console.error('❌ Error refreshing messages:', error);
+        });
+      }
+    };
+
+    // Also refresh messages when component mounts (user navigates to page)
+    if (chatId && user) {
+      console.log('🟢 Component mounted, refreshing messages');
+      fetch(`http://localhost:5000/api/support-chat/${chatId}/messages`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('leasemate_token')}`
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log('📨 Initial messages loaded:', data.length, 'messages');
+        setMessages(data);
+      })
+      .catch(error => {
+        console.error('❌ Error loading initial messages:', error);
+      });
+    }
+
+    // Also refresh messages when user focuses the window (clicks on notification)
+    const handleFocus = () => {
+      if (chatId && user) {
+        console.log('🟢 Window focused, refreshing messages');
+        fetch(`http://localhost:5000/api/support-chat/${chatId}/messages`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('leasemate_token')}`
+          }
+        })
+        .then(res => res.json())
+        .then(data => {
+          console.log('📨 Focus messages loaded:', data.length, 'messages');
+          setMessages(data);
+        })
+        .catch(error => {
+          console.error('❌ Error loading focus messages:', error);
+        });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [chatId, user]);
 
   // Cleanup function for when component unmounts
   useEffect(() => {
@@ -279,13 +402,41 @@ export default function SupportChatPage() {
             text
           });
         }
+        
+        // Mark support messages as read and clear notifications when user sends a message
+        try {
+          // Mark support messages as read
+          await fetch(`http://localhost:5000/api/support-chat/${chatId}/read`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('leasemate_token')}`
+            },
+            body: JSON.stringify({
+              userId: user._id
+            })
+          });
+          
+          // Mark support notifications as read
+          const supportNotifications = notifications.filter(
+            (n) => !n.isRead && n.type === 'SUPPORT_MESSAGE_TO_USER'
+          );
+          
+          for (const notification of supportNotifications) {
+            markSingleAsRead(notification._id);
+          }
+          
+          console.log('✅ Support messages and notifications marked as read');
+        } catch (error) {
+          console.error('❌ Error marking support messages/notifications as read:', error);
+        }
       }
 
       setText('');
     } catch (error) {
       console.error('❌ Error sending message:', error);
     }
-  }, [text, user, chatId, socket]);
+  }, [text, user, chatId, socket, notifications]);
 
   if (isLoading) {
     return (
@@ -331,7 +482,7 @@ export default function SupportChatPage() {
         </div>
 
         {/* Chat Container */}
-        <div className="flex flex-col h-[32rem] w-full border rounded-2xl shadow-2xl bg-gradient-to-br from-white to-orange-50 dark:from-gray-800 dark:to-gray-900 relative overflow-hidden">
+        <div className="flex flex-col h-[32rem] w-full border rounded-2xl shadow-2xl bg-gradient-to-br from-white to-orange-100 dark:from-gray-800 dark:to-gray-900 relative overflow-hidden">
           {/* Chat Header */}
           <div className="px-6 py-4 border-b border-orange-200 dark:border-orange-700 bg-gradient-to-r from-orange-50 to-white dark:from-gray-800 dark:to-gray-900 rounded-t-2xl flex items-center gap-3 sticky top-0 z-10">
             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-orange-400 to-orange-600 flex items-center justify-center">
@@ -371,7 +522,7 @@ export default function SupportChatPage() {
                       className={`relative max-w-[75%] px-4 py-3 rounded-2xl shadow-md text-base break-words
                         ${senderId === user._id
                           ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white'
-                          : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white'}
+                          : 'bg-white dark:bg-gray-600 text-gray-800 dark:text-white'}
                       `}
                       style={{
                         borderRadius: senderId === user._id 
