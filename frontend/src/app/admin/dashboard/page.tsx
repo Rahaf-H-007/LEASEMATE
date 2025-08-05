@@ -82,6 +82,12 @@ export default function AdminDashboard() {
   const [selectedSupportChat, setSelectedSupportChat] = useState<any>(null);
   const [supportMessages, setSupportMessages] = useState<any[]>([]);
   const [supportText, setSupportText] = useState('');
+  
+  // Support search state
+  const [supportSearchQuery, setSupportSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<User[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedSearchIndex, setSelectedSearchIndex] = useState(-1);
 
   // State for subscriptions
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
@@ -165,12 +171,166 @@ export default function AdminDashboard() {
     }
   }, [token]);
 
+  // Search users for support chat
+  const searchUsersForSupport = async (query: string) => {
+    if (!token || !query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    
+    setIsSearching(true);
+    try {
+      // Filter users from existing users state
+      const filteredUsers = users.filter(user => 
+        user.name.toLowerCase().includes(query.toLowerCase()) ||
+        user.email?.toLowerCase().includes(query.toLowerCase()) ||
+        user.phone?.includes(query)
+      );
+      
+      // Filter out admin users and only show landlords and tenants
+      const nonAdminUsers = filteredUsers.filter(user => user.role !== 'admin');
+      setSearchResults(nonAdminUsers);
+    } catch (error) {
+      console.error('Error searching users:', error);
+      setSearchResults([]);
+      toast.error('حدث خطأ أثناء البحث عن المستخدمين');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Handle user selection for support chat
+  const handleUserSelectForSupport = async (selectedUser: User) => {
+    if (!token) return;
+    
+    try {
+      // Check if support chat already exists for this user
+      const existingChat = supportChats.find(chat => chat.user?._id === selectedUser._id);
+      
+      if (existingChat) {
+        // If chat exists, select it
+        handleSelectSupportChat(existingChat);
+        toast.success(`تم فتح المحادثة مع ${selectedUser.name}`);
+      } else {
+        // Create new support chat
+        const response = await fetch('http://localhost:5000/api/support-chat/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            userId: selectedUser._id,
+            text: ''
+          })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          // Refresh support chats to include the new one
+          await fetchSupportChats();
+          
+          // Find the newly created chat and select it
+          setTimeout(async () => {
+            const updatedChats = await fetch('http://localhost:5000/api/support-chat/admin', {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }).then(res => res.json());
+            
+            const newChat = updatedChats.find((chat: any) => chat.user?._id === selectedUser._id);
+            if (newChat) {
+              handleSelectSupportChat(newChat);
+              toast.success(`تم إنشاء محادثة جديدة مع ${selectedUser.name}`);
+            }
+          }, 500);
+        } else {
+          toast.error('حدث خطأ أثناء إنشاء المحادثة');
+        }
+      }
+      
+      // Clear search
+      setSupportSearchQuery('');
+      setSearchResults([]);
+    } catch (error) {
+      console.error('Error creating/selecting support chat:', error);
+      toast.error('حدث خطأ أثناء إنشاء المحادثة');
+    }
+  };
+
   // Fetch support chats when admin loads the page to show unread count
   useEffect(() => {
     if (token && user?.role === 'admin') {
       fetchSupportChats();
     }
   }, [token, user?.role, fetchSupportChats]);
+
+  // Search users when query changes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (supportSearchQuery.trim()) {
+        searchUsersForSupport(supportSearchQuery);
+        setSelectedSearchIndex(-1); // Reset selection when query changes
+      } else {
+        setSearchResults([]);
+        setSelectedSearchIndex(-1);
+      }
+    }, 300); // Debounce search
+
+    return () => clearTimeout(timeoutId);
+  }, [supportSearchQuery, users]);
+
+  // Close search results when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.search-container')) {
+        setSearchResults([]);
+        setSelectedSearchIndex(-1);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Keyboard navigation for search
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!searchResults.length) return;
+      
+      switch (event.key) {
+        case 'ArrowDown':
+          event.preventDefault();
+          setSelectedSearchIndex(prev => 
+            prev < searchResults.length - 1 ? prev + 1 : prev
+          );
+          break;
+        case 'ArrowUp':
+          event.preventDefault();
+          setSelectedSearchIndex(prev => prev > 0 ? prev - 1 : -1);
+          break;
+        case 'Enter':
+          event.preventDefault();
+          if (selectedSearchIndex >= 0 && selectedSearchIndex < searchResults.length) {
+            handleUserSelectForSupport(searchResults[selectedSearchIndex]);
+          }
+          break;
+        case 'Escape':
+          setSearchResults([]);
+          setSelectedSearchIndex(-1);
+          setSupportSearchQuery('');
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [searchResults, selectedSearchIndex]);
 
   const fetchUsers = async () => {
     if (!token) return;
@@ -1274,9 +1434,9 @@ export default function AdminDashboard() {
                 </div>
               </div>
             ) : activeTab === 'support' ? (
-              <div className="flex h-full bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+              <div className="flex h-[calc(100vh-100px)] bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800 rounded-2xl shadow-2xl overflow-hidden">
                 {/* Sidebar for support chats */}
-                <div className={`border-r transition-all duration-300 ${isSupportSidebarCollapsed ? 'w-16' : 'w-1/3'} ${isDarkMode ? 'border-orange-700 bg-gray-800/90' : 'border-orange-200 bg-white/90'} backdrop-blur-xl`}>
+                <div className={`border-r transition-all duration-300 ${isSupportSidebarCollapsed ? 'w-16' : 'w-1/3'} ${isDarkMode ? 'border-orange-700 bg-gray-800/90' : 'border-orange-200 bg-white/90'} backdrop-blur-xl flex flex-col`}>
                   <div className={`border-b ${isDarkMode ? 'border-orange-700 bg-gradient-to-r from-gray-800 to-gray-900' : 'border-orange-200 bg-gradient-to-r from-orange-50 to-white'} ${isSupportSidebarCollapsed ? 'p-2' : 'p-6'}`}>
                     <div className={`flex items-center gap-3 ${isSupportSidebarCollapsed ? 'justify-center' : ''}`}>
                       <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-orange-400 to-orange-600 flex items-center justify-center">
@@ -1301,8 +1461,150 @@ export default function AdminDashboard() {
                         )}
                       </button>
                     </div>
+                    
+                    {/* Search Input */}
+                    {!isSupportSidebarCollapsed && (
+                      <div className="mt-4 relative search-container">
+                        <div className="mb-2">
+                          <h3 className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                            البحث عن مستخدم
+                          </h3>
+                          <p id="search-description" className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            ابحث عن مالك أو مستأجر لبدء محادثة دعم جديدة
+                          </p>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            placeholder="اكتب اسم المستخدم أو البريد الإلكتروني أو رقم الهاتف..."
+                            value={supportSearchQuery}
+                            onChange={(e) => setSupportSearchQuery(e.target.value)}
+                            className={`w-full px-4 py-2 pr-10 rounded-lg border text-sm ${
+                              isDarkMode 
+                                ? 'border-gray-600 bg-gray-700 text-gray-300 placeholder-gray-400' 
+                                : 'border-gray-200 bg-white text-gray-900 placeholder-gray-500'
+                            } focus:outline-none focus:ring-2 focus:ring-orange-400`}
+                            aria-label="البحث عن مستخدم"
+                            aria-describedby="search-description"
+                            role="combobox"
+                            aria-expanded={searchResults.length > 0}
+                            aria-haspopup="listbox"
+                            aria-controls="search-results"
+                          />
+                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <svg className={`w-4 h-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                          </div>
+                          {supportSearchQuery && (
+                            <button
+                              onClick={() => {
+                                setSupportSearchQuery('');
+                                setSearchResults([]);
+                              }}
+                              className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`}
+                              aria-label="مسح البحث"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                        
+                        {/* Search Results Dropdown */}
+                        {searchResults.length > 0 && (
+                          <div 
+                            id="search-results"
+                            role="listbox"
+                            className={`absolute top-full left-0 right-0 mt-1 z-50 rounded-lg shadow-lg border ${
+                              isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'
+                            } max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-orange-200 dark:scrollbar-thumb-orange-600 scrollbar-track-orange-50 dark:scrollbar-track-gray-700`}
+                            style={{ scrollbarWidth: 'thin', scrollbarColor: '#f97316 #fef3c7' }}
+                          >
+                            <div className={`p-2 text-xs font-semibold border-b ${
+                              isDarkMode ? 'text-gray-300 border-gray-600' : 'text-gray-600 border-gray-200'
+                            }`}>
+                              نتائج البحث ({searchResults.length})
+                            </div>
+                            {searchResults.map((user, index) => (
+                              <div
+                                key={user._id}
+                                onClick={() => handleUserSelectForSupport(user)}
+                                role="option"
+                                aria-selected={index === selectedSearchIndex}
+                                className={`p-3 cursor-pointer transition-colors border-b ${
+                                  index === selectedSearchIndex
+                                    ? 'bg-orange-100 dark:bg-orange-900'
+                                    : 'hover:bg-orange-50 dark:hover:bg-gray-600'
+                                } ${
+                                  isDarkMode ? 'border-gray-600' : 'border-gray-100'
+                                } last:border-b-0`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-orange-400 to-orange-600 flex items-center justify-center">
+                                    <span className="text-white font-bold text-xs">
+                                      {user.name.charAt(0)}
+                                    </span>
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                      {user.name}
+                                    </div>
+                                    <div className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                                      {user.email || user.phone || 'لا توجد معلومات إضافية'}
+                                    </div>
+                                  </div>
+                                  <div className={`text-xs px-2 py-1 rounded-full ${
+                                    user.role === 'landlord' 
+                                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
+                                      : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                                  }`}>
+                                    {user.role === 'landlord' ? 'مالك' : 'مستأجر'}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Loading indicator */}
+                        {isSearching && (
+                          <div className={`absolute top-full left-0 right-0 mt-1 z-50 rounded-lg shadow-lg border ${
+                            isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'
+                          } p-3`}>
+                            <div className="flex items-center justify-center">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-500"></div>
+                              <span className={`ml-2 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                                جاري البحث...
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* No results message */}
+                        {supportSearchQuery && !isSearching && searchResults.length === 0 && (
+                          <div className={`absolute top-full left-0 right-0 mt-1 z-50 rounded-lg shadow-lg border ${
+                            isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'
+                          } p-3`}>
+                            <div className="text-center">
+                              <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                لم يتم العثور على مستخدمين بهذا الاسم
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Keyboard shortcuts hint */}
+                        {searchResults.length > 0 && (
+                          <div className={`mt-2 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            <span>استخدم ↑↓ للتنقل، Enter للاختيار، Esc للإلغاء</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div className={`overflow-y-auto h-full ${isSupportSidebarCollapsed ? 'p-1' : 'p-2'}`}>
+                  <div className={`overflow-y-auto flex-1 ${isSupportSidebarCollapsed ? 'p-1' : 'p-2'} pb-4 scrollbar-thin scrollbar-thumb-orange-200 dark:scrollbar-thumb-orange-600 scrollbar-track-orange-50 dark:scrollbar-track-gray-700`} style={{ scrollbarWidth: 'thin', scrollbarColor: '#f97316 #fef3c7' }}>
                     {loadingSupportChats ? (
                       <div className={`text-center ${isSupportSidebarCollapsed ? 'p-2' : 'p-6'}`}>
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-3"></div>
@@ -1373,11 +1675,13 @@ export default function AdminDashboard() {
                         </div>
                       ))
                     )}
+                    {/* مساحة إضافية في النهاية لضمان ظهور آخر شات */}
+                    <div className="h-4"></div>
                   </div>
                 </div>
 
                 {/* Chat area */}
-                <div className="flex-1 flex flex-col h-full bg-gradient-to-br from-white to-orange-50 dark:from-gray-800 dark:to-gray-900">
+                <div className="flex-1 flex flex-col h-full bg-gradient-to-br from-white to-orange-50 dark:from-gray-800 dark:to-gray-900 overflow-hidden">
                   {selectedSupportChat ? (
                     <>
                       {/* Chat header */}
@@ -1400,8 +1704,21 @@ export default function AdminDashboard() {
                       </div>
 
                       {/* Messages */}
-                      <div className="flex-1 overflow-y-auto p-6 space-y-3 scrollbar-thin scrollbar-thumb-orange-300 scrollbar-track-orange-100 dark:scrollbar-thumb-orange-600 dark:scrollbar-track-gray-800 min-h-0 max-h-full scroll-smooth">
-                        {supportMessages.map((msg, idx) => {
+                      <div className="flex-1 overflow-y-auto p-6 space-y-3 scrollbar-thin scrollbar-thumb-orange-200 dark:scrollbar-thumb-orange-600 scrollbar-track-orange-50 dark:scrollbar-track-gray-700 min-h-0 max-h-full scroll-smooth" style={{ scrollbarWidth: 'thin', scrollbarColor: '#f97316 #fef3c7' }}>
+                        {supportMessages.length === 0 ? (
+                          <div className="flex items-center justify-center h-full">
+                            <div className="text-center">
+                              <div className="text-orange-400 dark:text-orange-300 mb-4">
+                                <svg className="w-16 h-16 mx-auto" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                                </svg>
+                              </div>
+                              <p className={`text-lg font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>لا توجد رسائل بعد</p>
+                              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-400'}`}>ابدأ المحادثة بكتابة رسالة أدناه</p>
+                            </div>
+                          </div>
+                        ) : (
+                          supportMessages.map((msg, idx) => {
                           const senderId = typeof msg.sender === 'string' ? msg.sender : msg.sender._id;
                           return (
                             <div key={msg._id || idx} className={`flex ${senderId === user?._id ? 'justify-end' : 'justify-start'}`}>
@@ -1424,7 +1741,8 @@ export default function AdminDashboard() {
                               </div>
                             </div>
                           );
-                        })}
+                        })
+                        )}
                       </div>
 
                       {/* Message input */}
@@ -1447,7 +1765,7 @@ export default function AdminDashboard() {
                       </form>
                     </>
                   ) : (
-                    <div className="flex-1 flex items-center justify-center">
+                    <div className="flex-1 flex items-center justify-center overflow-y-auto scrollbar-thin scrollbar-thumb-orange-200 dark:scrollbar-thumb-orange-600 scrollbar-track-orange-50 dark:scrollbar-track-gray-700" style={{ scrollbarWidth: 'thin', scrollbarColor: '#f97316 #fef3c7' }}>
                       <div className="text-center">
                         <div className="text-orange-400 dark:text-orange-300 mb-6">
                           <svg className="w-24 h-24 mx-auto" fill="currentColor" viewBox="0 0 24 24">
