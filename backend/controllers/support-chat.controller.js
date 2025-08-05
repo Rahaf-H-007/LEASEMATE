@@ -8,8 +8,8 @@ const createSupportChat = async (req, res) => {
     const { userId, text } = req.body;
     console.log("🟢 Creating support chat:", { userId, text });
 
-    if (!userId || !text) {
-      return res.status(400).json({ error: "جميع الحقول مطلوبة" });
+    if (!userId) {
+      return res.status(400).json({ error: "معرف المستخدم مطلوب" });
     }
 
     // تحقق من وجود شات دعم سابق للمستخدم
@@ -22,7 +22,7 @@ const createSupportChat = async (req, res) => {
       // إنشاء شات دعم جديد
       supportChat = await SupportChat.create({
         user: userId,
-        lastMessage: text,
+        lastMessage: text || '',
         lastMessageAt: new Date(),
       });
       console.log("✅ New support chat created:", supportChat._id);
@@ -30,31 +30,34 @@ const createSupportChat = async (req, res) => {
       console.log("✅ Existing support chat found:", supportChat._id);
     }
 
-    // إضافة الرسالة
-    const message = await SupportMessage.create({
-      supportChat: supportChat._id,
-      sender: userId,
-      text: text,
-    });
-    console.log("✅ Message created:", message._id);
+    // إضافة الرسالة فقط إذا كان هناك نص
+    let message = null;
+    if (text && text.trim()) {
+      message = await SupportMessage.create({
+        supportChat: supportChat._id,
+        sender: userId,
+        text: text,
+      });
+      console.log("✅ Message created:", message._id);
 
-    // تحديث آخر رسالة في الشات
-    await SupportChat.findByIdAndUpdate(supportChat._id, {
-      lastMessage: text,
-      lastMessageAt: new Date(),
-    });
+      // تحديث آخر رسالة في الشات
+      await SupportChat.findByIdAndUpdate(supportChat._id, {
+        lastMessage: text,
+        lastMessageAt: new Date(),
+      });
+    }
 
     // Socket event is now handled by frontend, no need to emit here
     // The frontend will emit the socket event directly
 
     res.json({
       chatId: supportChat._id,
-      message: {
+      message: message ? {
         _id: message._id,
         sender: message.sender,
         text: message.text,
         createdAt: message.createdAt,
-      },
+      } : null,
     });
   } catch (error) {
     console.error("❌ Error creating support chat:", error);
