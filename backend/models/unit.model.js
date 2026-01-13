@@ -1,0 +1,157 @@
+const mongoose = require("mongoose");
+
+const unitSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+  },
+  type: {
+    type: String,
+    enum: ["villa", "apartment"],
+    required: true,
+  },
+  description: {
+    type: String,
+    required: true,
+  },
+  images: {
+    type: [
+      {
+        url: { type: String, required: true },
+        status: {
+          type: String,
+          enum: ["pending", "approved", "rejected"],
+          default: "pending",
+        },
+      },
+    ],
+    //TODO: uncomment this when we're almost done
+    // required: true
+    // validate: [(arr) => arr.length > 0, "At least one image is required"],
+  },
+
+  ownerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    // required: true
+  },
+
+  pricePerMonth: {
+    type: Number,
+    min: [1, "Price per month must be greater than 0"],
+    // required: true,
+  },
+
+  securityDeposit: {
+    type: Number,
+    min: [1, "Security deposit must be greater than 0"],
+    // required: true,
+  },
+
+  numRooms: {
+    type: Number,
+    min: [1, "Number of rooms must be at least 1"],
+    // required: true,
+  },
+  space: {
+    type: Number,
+    min: [1, "Space must be greater than 0"],
+    // required: true,
+  },
+  isFurnished: {
+    type: Boolean,
+    // required: true,
+  },
+
+  address: {
+    type: String,
+    // required: true,
+  },
+  location: {
+    type: {
+      type: String,
+      enum: ["Point"],
+      default: "Point",
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      default: [31.2357, 30.0444], // Default to Cairo coordinates
+    },
+  },
+  city: {
+    type: String,
+    // required: true,
+  },
+  governorate: {
+    type: String,
+    // required: true,
+  },
+  postalCode: {
+    type: Number,
+    min: [1, "Postal code must be a positive number"],
+  },
+
+  hasPool: {
+    type: Boolean,
+    // required: function () {
+    //   return this.type === "villa";
+    // },
+    default: false,
+  },
+  hasAC: {
+    type: Boolean,
+    // required: true,
+    default: false,
+  },
+  hasTV: {
+    type: Boolean,
+    // required: true,
+    default: false,
+  },
+  hasWifi: {
+    type: Boolean,
+    // required: true,
+    default: false,
+  },
+  hasKitchenware: {
+    type: Boolean,
+    // required: true,
+    default: false,
+  },
+  hasHeating: {
+    type: Boolean,
+    // required: true,
+    default: false,
+  },
+
+  status: {
+    type: String,
+    enum: [
+      "pending",
+      "approved",
+      "rejected",
+      "available",
+      "booked",
+      "under maintenance",
+    ],
+    default: "pending",
+  },
+  rejectionReason: {
+    type: String,
+    default: "",
+  },
+subscriptionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Subscription',
+    required: false, // Only required for landlords
+  },
+});
+
+// geospatial index for location-based queries
+unitSchema.index({ location: "2dsphere" });
+
+module.exports = mongoose.model("Unit", unitSchema);
+
+// Add timestamps to the schema
+typeof unitSchema.set === 'function' && unitSchema.set('timestamps', true);
+

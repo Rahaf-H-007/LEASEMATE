@@ -1,0 +1,96 @@
+{
+  "dashboard": {
+    "welcome": "Welcome back, {name}!",
+    "subtitle": "Here's what's happening with your {item}.",
+    "quickStats": "Quick Stats",
+    "active": "Active {item}",
+    "total": "Total {item}",
+    "pendingTasks": "Pending Tasks",
+    "recentActivity": "Recent Activity",
+    "rentReceived": "Rent payment received",
+    "maintenanceResolved": "Maintenance request resolved",
+    "contractRenewal": "Contract renewal due soon",
+    "quickActions": "Quick Actions",
+    "addProperty": "Add New Property",
+    "submitRequest": "Submit Maintenance Request",
+    "viewDocuments": "View Documents",
+    "contactSupport": "Contact Support",
+    "yourProperties": "Your Properties",
+    "yourLeases": "Your Leases"
+  },
+  "navbar": {
+    "properties": "Properties",
+    "leases": "Leases",
+    "about": "About Us",
+    "dashboard": "Dashboard",
+    "profile": "Profile",
+    "logout": "Logout",
+    "signIn": "Sign In",
+    "signUp": "Sign Up"
+  },
+  "common": {
+    "language": "Language",
+    "english": "English",
+    "arabic": "Arabic"
+  },
+  "verification": {
+    "title": "Identity Verification",
+    "subtitle": "Complete your verification to access all features",
+    "step": "Step",
+    "of": "of",
+    "step1Title": "Upload ID Documents",
+    "step1Description": "Please upload clear photos of your government-issued ID (front and back).",
+    "step2Title": "Upload Selfie",
+    "step2Description": "We'll use face recognition to match your ID with your photo.",
+    "uploadFrontId": "Upload Front of ID",
+    "uploadBackId": "Upload Back of ID",
+    "uploadSelfie": "Upload Selfie",
+    "frontIdUploaded": "Front ID Uploaded ✓",
+    "backIdUploaded": "Back ID Uploaded ✓",
+    "selfieUploaded": "Selfie Uploaded ✓",
+    "dragDrop": "or drag and drop",
+    "continue": "Continue",
+    "uploading": "Uploading...",
+    "successTitle": "Verification Submitted!",
+    "successDescription": "Your documents have been uploaded successfully. Please wait for admin approval.",
+    "verificationPending": "Verification Pending",
+    "verificationApproved": "Identity Verified ✓",
+    "verificationRejected": "Verification Rejected",
+    "pendingDescription": "Your documents are being reviewed by our team.",
+    "approvedDescription": "Your identity has been verified successfully.",
+    "rejectedDescription": "Your verification was rejected. Please contact support."
+  },
+  "home": {
+    "verificationPendingTitle": "Verification Pending",
+    "verificationPendingSubtitle": "Thank you for submitting your verification documents. Our team is currently reviewing your information. You'll receive a notification once your verification is complete.",
+    "whatHappensNext": "What happens next?",
+    "reviewDocuments": "Our team reviews your submitted documents",
+    "verificationTime": "Verification typically takes 24-48 hours",
+    "emailNotification": "You'll receive an email notification when complete"
+  },
+  "admin": {
+    "view": "View",
+    "approve": "Approve",
+    "reject": "Reject",
+    "idImage": "ID Image",
+    "selfieImage": "Selfie Image",
+    "logout": "Logout"
+  },
+  "notifications": {
+  "pageTitle": "Notifications",
+  "pageSubtitle": "Stay updated with important alerts and reminders.",
+  "filterLabel": "Filter by:",
+  "all": "All",
+  "payments": "Payments",
+  "maintenance": "Maintenance",
+  "contracts": "Contracts",
+  "general": "General",
+  "verification": "Verification",
+  "markAllRead": "Mark all as read",
+  "noNotifications": "No notifications found.",
+  "from": "From:",
+  "markAsRead": "Mark as read",
+  "read": "Read"
+
+}
+} 
