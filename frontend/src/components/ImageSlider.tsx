@@ -12,6 +12,7 @@ const ImageSlider: React.FC<ImageSliderProps> = ({ images }) => {
   const [current, setCurrent] = useState(0);
   
   // Helper function to get image URL
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getImageUrl = (image: any) => {
     return typeof image === 'string' ? image : image.url;
   };
